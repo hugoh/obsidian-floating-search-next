@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 
-const workflow = readFileSync(".github/workflows/release.yml", "utf8");
+const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 
 describe("release workflow", () => {
   test("uploads every file Obsidian installs from a release", () => {
