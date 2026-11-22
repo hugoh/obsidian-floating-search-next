@@ -4,21 +4,75 @@
 # cog-bump) keeps a release PR that bumps manifest.json/package.json. Merging it
 # tags X.Y.Z and opens a draft release; `publish` attaches the build and only then
 # un-drafts it, so Obsidian never sees a version without assets.
-name: release
+name: ci
 
 on: # yamllint disable-line rule:truthy
   push:
     branches:
       - main
+  pull_request:
+  workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-caller-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  hk:
+    uses: hugoh/gh-workflows/.github/workflows/hk.yml@e16fb522310fbdff89aab38e3d16d13ee5cff11e # v1.40.20
+    permissions:
+      contents: read
+      packages: read
+      statuses: write
+    with:
+      pre-hk: bun install --frozen-lockfile
+
+  e2e:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: hugoh/gh-workflows/setup@e16fb522310fbdff89aab38e3d16d13ee5cff11e # v1.40.20
+        with:
+          apt-packages: xvfb herbstluftwm
+
+      - run: bun install --frozen-lockfile
+
+      # Obsidian needs a display and a window manager.
+      - name: Start virtual display
+        run: |
+          Xvfb :99 -screen 0 1280x1024x24 +extension GLX -noreset &
+          echo "DISPLAY=:99" >> "$GITHUB_ENV"
+          sleep 1
+          DISPLAY=:99 herbstluftwm &
+          sleep 1
+
+            # The oldest stable Obsidian at or above manifest.json's minAppVersion (1.13.0; 1.13.0-1.13.3 are betas needing an Insiders login), and the latest.
+      - run: bun run test:e2e
+        env:
+          WDIO_MAX_INSTANCES: 1
+          OBSIDIAN_VERSIONS: "1.13.4/earliest latest/latest"
+
+  ci-gate:
+    if: always()
+    needs: [hk, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ toJSON(needs) }}
+
   release-please:
+    needs: ci-gate
+    if: github.event_name == 'push'
+    concurrency:
+      group: release
+      cancel-in-progress: false
     timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions: {}
