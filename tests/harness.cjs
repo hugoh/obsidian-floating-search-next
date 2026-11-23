@@ -192,7 +192,7 @@ function createHarness() {
     EmbeddedView: class {},
     isEmbeddedLeaf: () => false,
   };
-  const sourceRoot = process.env.FLOAT_SEARCH_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');
+  const sourceRoot = process.env.PANE_SEARCH_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');
   const loaded = new Map();
   function load(name) {
     if (loaded.has(name)) return loaded.get(name);
@@ -249,7 +249,7 @@ function createHarness() {
     stripExclusion: (q) => q,
 
   };
-  return { ...load('floatSearchIndex'), FloatSearchCmdkModal: load('cmdkModal').FloatSearchCmdkModal, FloatSearchModal: load('nativeModal').FloatSearchModal, filters: load('filterBar'), clock, app, plugin,
+  return { ...load('paneSearchIndex'), PaneSearchCmdkModal: load('cmdkModal').PaneSearchCmdkModal, PaneSearchModal: load('nativeModal').PaneSearchModal, filters: load('filterBar'), clock, app, plugin,
     mainLeaf, makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 

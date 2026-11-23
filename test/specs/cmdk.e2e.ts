@@ -35,7 +35,7 @@ describe("Quick search (CMDK)", () => {
     });
     await browser.keys("Shift");
     await browser.keys("Shift");
-    await browser.$(".float-search-cmdk").waitForExist({ timeout: 5000 });
+    await browser.$(".pane-search-cmdk").waitForExist({ timeout: 5000 });
   });
 
   it("previews the selected result automatically by default", async () => {
@@ -46,7 +46,7 @@ describe("Quick search (CMDK)", () => {
     // The first row is "save this search"; move onto a note.
     await browser.keys("ArrowDown");
     await browser
-      .$(".float-search-cmdk-expanded")
+      .$(".pane-search-cmdk-expanded")
       .waitForExist({ timeout: 10_000 });
   });
 
@@ -57,13 +57,13 @@ describe("Quick search (CMDK)", () => {
     await waitForResult("Pineapple");
     await browser.keys("ArrowDown");
     await browser.pause(800);
-    expect(await browser.$(".float-search-cmdk-expanded").isExisting()).toBe(
+    expect(await browser.$(".pane-search-cmdk-expanded").isExisting()).toBe(
       false,
     );
 
     await browser.keys("Tab");
     await browser
-      .$(".float-search-cmdk-expanded")
+      .$(".pane-search-cmdk-expanded")
       .waitForExist({ timeout: 10_000 });
     await updateSettings({ cmdkAutoPreview: true });
   });
@@ -71,7 +71,7 @@ describe("Quick search (CMDK)", () => {
   it("marks active filters and lets you reset them", async () => {
     await updateSettings({ filterStarredOnly: true, filterMatchCase: true });
     await openCmdk();
-    const marker = browser.$(".float-search-cmdk-container .fs-filter-active");
+    const marker = browser.$(".pane-search-cmdk-container .fs-filter-active");
     await marker.waitForDisplayed();
     expect(await marker.getText()).toContain("2 filters on");
 
@@ -91,7 +91,7 @@ describe("Quick search (CMDK)", () => {
     await openCmdk();
     expect(
       await browser
-        .$(".float-search-cmdk-container .fs-filter-active")
+        .$(".pane-search-cmdk-container .fs-filter-active")
         .isDisplayed(),
     ).toBe(false);
   });
@@ -117,7 +117,7 @@ describe("Quick search (CMDK)", () => {
 
   it("renders the filter icons", async () => {
     await openCmdk();
-    const icons = await browser.$$(".float-search-cmdk .fs-filter-icon svg");
+    const icons = await browser.$$(".pane-search-cmdk .fs-filter-icon svg");
     expect(icons.length).toBe(2);
   });
 
@@ -200,7 +200,7 @@ describe("Quick search (CMDK)", () => {
     const createNote = async (text: string) => {
       const input = await openCmdk();
       await input.setValue(text);
-      const item = browser.$(".float-search-cmdk-create-item");
+      const item = browser.$(".pane-search-cmdk-create-item");
       await item.waitForExist();
       await item.click();
       await browser.waitUntil(
@@ -229,9 +229,9 @@ describe("Quick search (CMDK)", () => {
     const input = await openCmdk();
     await input.setValue("^(a+)+$");
     await browser
-      .$(".float-search-cmdk-notice")
+      .$(".pane-search-cmdk-notice")
       .waitForExist({ timeout: 10_000 });
-    expect(await browser.$(".float-search-cmdk-notice").getText()).toContain(
+    expect(await browser.$(".pane-search-cmdk-notice").getText()).toContain(
       "too complex",
     );
   });
@@ -242,7 +242,7 @@ describe("Quick search (CMDK)", () => {
     await input.setValue("zzz-no-such-note");
     await browser.waitUntil(
       async () =>
-        (await browser.$$(".float-search-cmdk .suggestion-item")).length > 0,
+        (await browser.$$(".pane-search-cmdk .suggestion-item")).length > 0,
       { timeoutMsg: "no quick-create suggestion appeared" },
     );
     await updateSettings({ cmdkQuickCreate: false });

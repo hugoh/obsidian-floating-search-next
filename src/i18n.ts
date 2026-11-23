@@ -95,8 +95,8 @@ export interface Strings {
   cmdSearchTaskTodo: string;
   cmdSearchTaskDone: string;
   cmdSearchProperty: string;
-  menuSearchInFloat: (query: string) => string;
-  menuOpenInFloatPreview: string;
+  menuSearchInPane: (query: string) => string;
+  menuOpenInPanePreview: string;
   instrNavigate: string;
   instrCollapse: string;
   instrOpenBackground: string;
@@ -209,8 +209,8 @@ const EN: Strings = {
   cmdSearchTaskTodo: "Search: task-todo: (Find matches in uncompleted tasks)",
   cmdSearchTaskDone: "Search: task-done: (Find matches in completed tasks)",
   cmdSearchProperty: "Search: [property] or [property:value]",
-  menuSearchInFloat: (query) => `Search "${query}" in Floating Search Next`,
-  menuOpenInFloatPreview: "Open in Float Preview",
+  menuSearchInPane: (query) => `Search "${query}" in Pane Search`,
+  menuOpenInPanePreview: "Open in Pane Preview",
   instrNavigate: "Navigate",
   instrCollapse: "Collapse/Expand",
   instrOpenBackground: "Open in background",
@@ -327,8 +327,8 @@ const ZH: Strings = {
   cmdSearchTaskTodo: "搜索：task-todo:（未完成任务）",
   cmdSearchTaskDone: "搜索：task-done:（已完成任务）",
   cmdSearchProperty: "搜索：[属性] 或 [属性:值]",
-  menuSearchInFloat: (query) => `用浮动搜索查找「${query}」`,
-  menuOpenInFloatPreview: "在浮动预览中打开",
+  menuSearchInPane: (query) => `用窗格搜索查找「${query}」`,
+  menuOpenInPanePreview: "在窗格预览中打开",
   instrNavigate: "切换结果",
   instrCollapse: "折叠/展开",
   instrOpenBackground: "后台打开",

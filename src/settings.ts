@@ -28,7 +28,7 @@ export interface SavedSearch {
   query: string;
 }
 
-export interface FloatSearchSettings {
+export interface PaneSearchSettings {
   searchViewState: SearchState;
   showFilePath: boolean;
   showInstructions: boolean;
@@ -74,7 +74,7 @@ const SORT_ORDERS: readonly SortOrder[] = [
 
 export const DOUBLE_TAP_RANGE = { min: 150, max: 600 } as const;
 
-export const DEFAULT_SETTINGS: FloatSearchSettings = {
+export const DEFAULT_SETTINGS: PaneSearchSettings = {
   searchViewState: {
     collapseAll: false,
     explainSearch: false,
@@ -166,7 +166,7 @@ function sanitizeSavedSearches(raw: unknown): SavedSearch[] {
 }
 
 /** Turns whatever data.json held into valid settings; never throws. */
-export function sanitizeSettings(raw: unknown): FloatSearchSettings {
+export function sanitizeSettings(raw: unknown): PaneSearchSettings {
   const data = isRecord(raw) ? raw : {};
   const d = DEFAULT_SETTINGS;
   return {

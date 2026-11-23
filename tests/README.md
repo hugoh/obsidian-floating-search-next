@@ -1,4 +1,4 @@
-# Floating Search Next regression tests
+# Pane Search regression tests
 
 Run after installing the repository's dependencies:
 
@@ -27,6 +27,6 @@ tests, not a replacement for testing rendered UI and Obsidian's native search
 parser in a real application.
 
 To run the same assertions against another source snapshot, set
-`FLOAT_SEARCH_TEST_SOURCE_ROOT` to a directory containing
-`src/floatSearchIndex.ts` and `src/filterBar.ts`. Dependencies still resolve from
+`PANE_SEARCH_TEST_SOURCE_ROOT` to a directory containing
+`src/paneSearchIndex.ts` and `src/filterBar.ts`. Dependencies still resolve from
 this repository.

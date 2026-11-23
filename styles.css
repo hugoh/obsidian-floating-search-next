@@ -6,38 +6,38 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-.float-search-modal {
+.pane-search-modal {
 	width: 700px;
 	padding-bottom: 0;
 	transition: width 0.15s ease;
 }
 
-.float-search-modal.float-search-width {
+.pane-search-modal.pane-search-width {
 	width: 1200px;
 }
 
-.float-search-modal-search-ctn,
-.float-search-modal-file-ctn {
+.pane-search-modal-search-ctn,
+.pane-search-modal-file-ctn {
 	height: 100%;
 	width: 100%;
 }
 
-.float-search-modal-file-ctn .view-header {
+.pane-search-modal-file-ctn .view-header {
 	display: none;
 }
 
-.float-search-modal-content {
+.pane-search-modal-content {
 	height: 800px;
 	display: flex;
 	align-items: center;
 	flex-direction: row;
 }
 
-.float-search-modal-file-ctn .view-content {
+.pane-search-modal-file-ctn .view-content {
 	height: 100%;
 }
 
-.float-search-modal .modal-close-button {
+.pane-search-modal .modal-close-button {
 	z-index: 40;
 }
 
@@ -61,11 +61,11 @@ If your plugin does not need CSS, delete this file.
 	display: none;
 }
 
-.modal-container.float-search-modal-container.mod-dim {
+.modal-container.pane-search-modal-container.mod-dim {
 	z-index: 30;
 }
 
-.float-search-modal-instructions {
+.pane-search-modal-instructions {
 	border-top: 1px solid var(--background-secondary);
 	user-select: none;
 	font-size: var(--font-ui-smaller);
@@ -78,34 +78,34 @@ If your plugin does not need CSS, delete this file.
 	gap: var(--size-4-3);
 }
 
-.float-search-modal-instructions .float-search-modal-instructions-key {
+.pane-search-modal-instructions .pane-search-modal-instructions-key {
 	font-weight: var(--font-extrabold);
 	margin-right: var(--size-2-2);
 }
 
-.float-search-modal-content.has-file-ctn
-	.float-search-modal-search-ctn {
+.pane-search-modal-content.has-file-ctn
+	.pane-search-modal-search-ctn {
 	border-right: 1px solid var(--background-secondary);
 }
 
-.float-search-modal-file-ctn:focus-within {
+.pane-search-modal-file-ctn:focus-within {
 	border-bottom: 3px solid var(--color-accent);
 }
 
-.float-search-modal-file-ctn:focus-within .cm-scroller {
+.pane-search-modal-file-ctn:focus-within .cm-scroller {
 	background-color: var(--background-primary);
 }
 
-.float-search-view-switch {
+.pane-search-view-switch {
 	display: flex;
 	align-items: center;
 }
 
-.float-search-view-menu .menu-item-icon {
+.pane-search-view-menu .menu-item-icon {
 	color: var(--text-muted);
 }
 
-.float-search-view-menu svg {
+.pane-search-view-menu svg {
 	fill: none;
 	stroke: currentcolor;
 	stroke-width: 2;
@@ -150,17 +150,17 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 }
 
 /* ── CMDK Modal ── */
-.prompt.float-search-cmdk {
+.prompt.pane-search-cmdk {
 	width: 700px;
 	max-width: 90vw;
 	transition: width 0.15s ease;
 }
 
-.prompt.float-search-cmdk.float-search-cmdk-expanded {
+.prompt.pane-search-cmdk.pane-search-cmdk-expanded {
 	width: 1100px;
 }
 
-.float-search-cmdk-body {
+.pane-search-cmdk-body {
 	display: flex;
 	flex-direction: row;
 	height: 50vh;
@@ -168,69 +168,69 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 	overflow: hidden;
 }
 
-.float-search-cmdk-body .prompt-results {
+.pane-search-cmdk-body .prompt-results {
 	max-height: none;
 	height: 100%;
 	overflow-y: auto;
 	flex: 1 1 auto;
 }
 
-.float-search-cmdk-expanded .float-search-cmdk-body .prompt-results {
+.pane-search-cmdk-expanded .pane-search-cmdk-body .prompt-results {
 	flex: 0 0 40%;
 	border-right: 1px solid var(--background-modifier-border);
 }
 
-.float-search-cmdk-preview {
+.pane-search-cmdk-preview {
 	flex: 1;
 	overflow: hidden;
 	height: 100%;
 }
 
-.float-search-cmdk-preview .view-header {
+.pane-search-cmdk-preview .view-header {
 	display: none;
 }
 
-.float-search-cmdk-preview .view-content {
+.pane-search-cmdk-preview .view-content {
 	height: 100%;
 }
 
-.float-search-cmdk-preview .fs-block.fs-block {
+.pane-search-cmdk-preview .fs-block.fs-block {
 	height: 100%;
 }
 
-.float-search-cmdk-preview .fs-content {
+.pane-search-cmdk-preview .fs-content {
 	height: 100%;
 }
 
-.float-search-cmdk-preview .fs-content .workspace-split.mod-vertical {
+.pane-search-cmdk-preview .fs-content .workspace-split.mod-vertical {
 	height: 100%;
 }
 
-.float-search-cmdk-preview .workspace-leaf-resize-handle {
+.pane-search-cmdk-preview .workspace-leaf-resize-handle {
 	display: none;
 }
 
-.modal-container.float-search-cmdk-container.mod-dim {
+.modal-container.pane-search-cmdk-container.mod-dim {
 	z-index: 30;
 }
 
 /* ── Quick Create item ── */
-.float-search-cmdk-create-item {
+.pane-search-cmdk-create-item {
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.float-search-cmdk-create-item .suggestion-title {
+.pane-search-cmdk-create-item .suggestion-title {
 	color: var(--text-accent);
 	font-weight: var(--font-semibold);
 }
 
-.float-search-cmdk-create-item .suggestion-flair {
+.pane-search-cmdk-create-item .suggestion-flair {
 	display: flex;
 	align-items: center;
 	color: var(--text-accent);
 }
 
-.float-search-filter-row {
+.pane-search-filter-row {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
@@ -242,7 +242,7 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 	user-select: none;
 }
 
-.float-search-cmdk .float-search-filter-row {
+.pane-search-cmdk .pane-search-filter-row {
 	padding: 6px 12px 8px;
 }
 
@@ -336,33 +336,33 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 
 
 /* Keep the native floating preview usable in narrow windows. */
-.float-search-modal {
+.pane-search-modal {
 	max-width: calc(100vw - 32px);
 	container-type: inline-size;
 }
-.float-search-modal-content {
+.pane-search-modal-content {
 	max-height: 75vh;
 	min-height: 0;
 }
-.float-search-modal-search-ctn,
-.float-search-modal-file-ctn {
+.pane-search-modal-search-ctn,
+.pane-search-modal-file-ctn {
 	min-width: 0;
 	min-height: 0;
 	flex: 1 1 0;
 }
 @container (max-width: 650px) {
-	.float-search-modal-content {
+	.pane-search-modal-content {
 		flex-direction: column;
 		align-items: stretch;
 	}
-	.float-search-modal-content.has-file-ctn .float-search-modal-search-ctn {
+	.pane-search-modal-content.has-file-ctn .pane-search-modal-search-ctn {
 		border-right: none;
 		border-bottom: 1px solid var(--background-secondary);
 	}
 }
 
 /* ── Filter chip bar (CMDK) ── */
-.float-search-filter-bar {
+.pane-search-filter-bar {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--size-4-1);
@@ -370,7 +370,7 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.float-search-filter-chip {
+.pane-search-filter-chip {
 	cursor: pointer;
 	padding: 2px var(--size-4-2);
 	background-color: var(--background-secondary-alt);
@@ -383,17 +383,17 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
 	white-space: nowrap;
 }
 
-.float-search-filter-chip:hover {
+.pane-search-filter-chip:hover {
 	background-color: var(--background-modifier-hover);
 }
 
-.float-search-filter-chip.is-active {
+.pane-search-filter-chip.is-active {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border-color: var(--interactive-accent);
 }
 
-.float-search-cmdk-notice {
+.pane-search-cmdk-notice {
   color: var(--text-warning, var(--text-muted));
   font-style: italic;
 }
@@ -408,7 +408,7 @@ body:not(.show-file-path) .search-result-file-title .search-result-file-path {
   width: 600px;
 }
 
-.float-search-filter-row.has-active-filters {
+.pane-search-filter-row.has-active-filters {
   box-shadow: inset 3px 0 0 var(--interactive-accent);
 }
 

@@ -46,7 +46,7 @@ function nativeNonemptyMatch(source, text, matchCase = false) {
 for (const extension of ['canvas', 'base', 'pdf', 'md']) {
   test(`CMDK opens .${extension} through Obsidian's native file dispatcher`, async () => {
     const h = createHarness();
-    const modal = new h.FloatSearchCmdkModal(h.plugin);
+    const modal = new h.PaneSearchCmdkModal(h.plugin);
     const file = new h.TFile(`notes/example.${extension}`);
     await modal.onChooseSuggestion({ type: 'file', file }, {});
     await h.clock.microtasks();
@@ -59,7 +59,7 @@ for (const extension of ['canvas', 'base', 'pdf', 'md']) {
 
 test('an empty result set immediately clears the old preview and cancels a pending selection', async () => {
   const h = createHarness();
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   const stale = { type: 'file', file: new h.TFile('old.md') };
   await modal.showPreview(stale);
@@ -70,7 +70,7 @@ test('an empty result set immediately clears the old preview and cancels a pendi
   modal.updateSuggestions();
   assert.equal(modal.chooser.suggestions.length, 0);
   assert.ok(oldPreview.hidden || oldPreview.detached || oldPreview.style.display === 'none', 'Stale preview must disappear synchronously');
-  assert.equal(modal.modalEl.hasClass('float-search-cmdk-expanded'), false);
+  assert.equal(modal.modalEl.hasClass('pane-search-cmdk-expanded'), false);
   await h.clock.tick(200);
   assert.equal(leaf.opened.length, 1, 'Old debounced selection must not reopen the preview');
   assert.deepEqual(h.clock.errors, []);
@@ -83,7 +83,7 @@ test('closing CMDK cancels content results whose cachedRead is already pending',
   h.app.vault.getFiles = () => [file];
   let readStarted = false;
   h.app.vault.cachedRead = () => { readStarted = true; return pending.promise; };
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   modal.inputEl.value = 'needle';
   modal.updateSuggestions();
@@ -103,7 +103,7 @@ test('closing CMDK during preview openFile prevents late focus', async () => {
   let readStarted = false;
   leaf.openFile = () => { readStarted = true; return pending.promise; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   const preview = modal.showPreview({ type: 'file', file: new h.TFile('slow.canvas') });
   await h.clock.microtasks();
@@ -125,7 +125,7 @@ test('closing the native modal while its search leaf initializes stops post-awai
   let stateWrites = 0;
   leaf.view.setState = async () => { stateWrites++; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   const continued = [];
   for (const name of ['initFilterBar', 'initInput', 'initContent']) {
     modal[name] = () => continued.push(name);
@@ -148,7 +148,7 @@ test('closing the native modal during a preview read prevents late focus', async
   let readStarted = false;
   leaf.openFile = () => { readStarted = true; return pending.promise; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   modal.searchLeaf = h.makeLeaf();
   modal.searchEmbeddedView = { unload() {} };
   const input = modal.searchLeaf.view.searchComponent.inputEl;
@@ -212,7 +212,7 @@ for (const [type, detail, expected] of [
     const requested = [];
     h.app.workspace.getLeaf = (kind) => { requested.push(kind); return h.mainLeaf; };
     h.app.workspace.getMostRecentLeaf = () => { throw new Error('Shift must choose a new tab'); };
-    const modal = new h.FloatSearchCmdkModal(h.plugin);
+    const modal = new h.PaneSearchCmdkModal(h.plugin);
     const file = new h.TFile('note.md');
     await modal.onChooseSuggestion({ type, file, ...detail }, { shiftKey: true });
     await h.clock.microtasks();
@@ -227,7 +227,7 @@ test('changing the query cancels a cachedRead result already in flight', async (
   const pending = deferred();
   h.app.vault.getFiles = () => [new h.TFile('ordinary.md')];
   h.app.vault.cachedRead = () => pending.promise;
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   modal.inputEl.value = 'oldneedle';
   modal.updateSuggestions();
@@ -250,7 +250,7 @@ test('rapid CMDK selection changes keep the newest preview and suppress stale fo
     return opened.length === 1 ? pending.promise : Promise.resolve();
   };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   const first = modal.showPreview({ type: 'heading', file: new h.TFile('old.md'), heading: 'Old' });
   await h.clock.microtasks();
@@ -267,7 +267,7 @@ test('rapid CMDK selection changes keep the newest preview and suppress stale fo
 
 test('native search clears its preview when no result is focused', async () => {
   const h = createHarness();
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   modal.searchLeaf = h.makeLeaf();
   modal.searchLeaf.view.dom = { focusedItem: undefined };
   await modal.initFileView(new h.TFile('previous.md'), undefined);
@@ -275,7 +275,7 @@ test('native search clears its preview when no result is focused', async () => {
   modal.autoPreviewFocusedItem();
   assert.equal(preview.leaf.detached, true);
   assert.equal(preview.embedded.unloaded, true);
-  assert.equal(modal.modalEl.hasClass('float-search-width'), false);
+  assert.equal(modal.modalEl.hasClass('pane-search-width'), false);
   assert.equal(modal.fileLeaf, undefined);
 });
 
@@ -286,7 +286,7 @@ test('native initialization cannot change selection after closing during delayed
   let setStateStarted = false;
   leaf.view.setState = () => { setStateStarted = true; return pending.promise; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(setStateStarted, true);
@@ -541,7 +541,7 @@ test('CMDK discards zero-length regex matches exactly like native search', () =>
 
 test('native match-case synchronization uses its dedicated setter without resetting view state', () => {
   const h = createHarness();
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   const calls = [];
   let matchingCase = false;
   const view = {
@@ -567,7 +567,7 @@ test('native initialization applies the filter match-case setting to initial and
   const delayed = [];
   leaf.view.setState = async (state) => { delayed.push(state); };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: '^Needle$', matchingCase: false });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: '^Needle$', matchingCase: false });
   await modal.initSearchView(new ElementStub());
   assert.equal(leaf.viewStates[0].state.matchingCase, true);
   assert.equal(leaf.viewStates[0].state.query, '^Needle$');
@@ -583,7 +583,7 @@ test('native initialization does not overwrite text typed before the delayed sta
   leaf.view.setState = async (state) => { delayed.push(state); };
   leaf.view.searchComponent = { inputEl: { value: 'pineapple', setSelectionRange() {} } };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: '' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: '' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(delayed.length, 0, 'User input must not be replaced by the saved state');
@@ -596,7 +596,7 @@ test('native initialization still applies the delayed state while the input is u
   leaf.view.setState = async (state) => { delayed.push(state); };
   leaf.view.searchComponent = { inputEl: { value: '', setSelectionRange() {} } };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: '' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: '' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(delayed.length, 1);
@@ -620,7 +620,7 @@ test('clearing native search cancels an earlier typed debounce', async () => {
 test('native match-case fallback state marks the update as plugin-originated', () => {
   const h = createHarness();
   h.plugin.settings.filterMatchCase = true;
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   const updates = [];
   const view = {
     getState: () => ({ query: 'needle', matchingCase: false }),
@@ -639,7 +639,7 @@ test('native modal wires clear-button changes to preview cleanup and clears old 
   input.view.containerEl = new ElementStub();
   input.view.dom = { focusedItem: null, setFocusedItem(item) { this.focusedItem = item; } };
   input.view.setMatchingCase = () => {};
-  const modal = new h.FloatSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
   modal.searchLeaf = h.makeLeaf();
   modal.searchLeaf.view = input.view;
   modal.searchCtnEl = new ElementStub();
@@ -662,7 +662,7 @@ test('native modal wires clear-button changes to preview cleanup and clears old 
 for (const reusePreview of [false, true]) {
   test(`CMDK keeps ${reusePreview ? 'an existing' : 'a new'} preview hidden until openFile finishes`, async () => {
     const h = createHarness();
-    const modal = new h.FloatSearchCmdkModal(h.plugin);
+    const modal = new h.PaneSearchCmdkModal(h.plugin);
     modal.onOpen();
     let leaf;
     if (reusePreview) {
@@ -684,13 +684,13 @@ for (const reusePreview of [false, true]) {
     pending.resolve();
     await loading;
     assert.equal(modal.previewEl.hidden, false);
-    assert.equal(modal.modalEl.hasClass('float-search-cmdk-expanded'), true);
+    assert.equal(modal.modalEl.hasClass('pane-search-cmdk-expanded'), true);
   });
 }
 
 test('a preview invalidated by an empty result set never becomes visible when its read finishes', async () => {
   const h = createHarness();
-  const modal = new h.FloatSearchCmdkModal(h.plugin);
+  const modal = new h.PaneSearchCmdkModal(h.plugin);
   modal.onOpen();
   const leaf = h.makeLeaf();
   const pending = deferred();
@@ -708,5 +708,5 @@ test('a preview invalidated by an empty result set never becomes visible when it
   await loading;
   assert.equal(lateShows, 0);
   assert.equal(previewEl.hidden, true);
-  assert.equal(modal.modalEl.hasClass('float-search-cmdk-expanded'), false);
+  assert.equal(modal.modalEl.hasClass('pane-search-cmdk-expanded'), false);
 });
