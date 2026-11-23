@@ -24,26 +24,26 @@ import {
   type WorkspaceItem,
   WorkspaceLeaf,
 } from "obsidian";
-import { FloatSearchCmdkModal } from "./cmdkModal";
+import { PaneSearchCmdkModal } from "./cmdkModal";
 
 import { stripExclusion, withExclusion } from "./exclusions";
 import { registerFilterIcons } from "./filterBar";
 import { strings } from "./i18n";
 import { EmbeddedView, isEmbeddedLeaf } from "./leafView";
-import { FloatSearchModal } from "./nativeModal";
+import { PaneSearchModal } from "./nativeModal";
 import { escapeRegex } from "./regex";
 import { SearchFilter } from "./searchFilter";
 import {
   DEFAULT_SETTINGS,
-  type FloatSearchSettings,
   newSavedSearchId,
+  type PaneSearchSettings,
   parseViewType,
   type SearchState,
   type SearchType,
   type SortOrder,
   sanitizeSettings,
 } from "./settings";
-import { FloatSearchSettingTab } from "./settingsTab";
+import { PaneSearchSettingTab } from "./settingsTab";
 
 interface viewType {
   type: SearchType;
@@ -116,11 +116,11 @@ interface HighlightingEditor {
   hasHighlight?: (...args: unknown[]) => boolean;
 }
 
-export default class FloatSearchPlugin extends Plugin {
-  settings: FloatSearchSettings;
+export default class PaneSearchPlugin extends Plugin {
+  settings: PaneSearchSettings;
   private state: SearchState;
-  private modal: FloatSearchModal;
-  private cmdkModal: FloatSearchCmdkModal;
+  private modal: PaneSearchModal;
+  private cmdkModal: PaneSearchCmdkModal;
 
   queryLoaded = false;
 
@@ -176,7 +176,7 @@ export default class FloatSearchPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       // The prototype monkeypatches (patchWorkspace / patchSearchView / …)
       // are deferred to first use via ensurePatched() — they are only
-      // needed once the user actually opens a float search, so we no
+      // needed once the user actually opens a pane search, so we no
       // longer pay for them at every startup (candidate ⑤).
       this.registerDoubleKeyHandler();
     });
@@ -187,12 +187,12 @@ export default class FloatSearchPlugin extends Plugin {
     this.registerContextMenuHandler();
 
     this.addRibbonIcon(
-      "float-search-window",
+      "pane-search-window",
       strings().ribbonSearch(this.settings.defaultViewType),
       () => void this.openSearch(this.state, undefined, true),
     );
     this.updateFilePathVisibility();
-    this.addSettingTab(new FloatSearchSettingTab(this.app, this));
+    this.addSettingTab(new PaneSearchSettingTab(this.app, this));
   }
 
   onunload() {
@@ -273,7 +273,7 @@ export default class FloatSearchPlugin extends Plugin {
         if (
           keyOnly &&
           now - lastKeyUp < this.settings.cmdkDoubleTapInterval &&
-          !doc.querySelector(".float-search-cmdk-container")
+          !doc.querySelector(".pane-search-cmdk-container")
         ) {
           lastKeyUp = 0;
           this.openCmdkModal();
@@ -299,7 +299,7 @@ export default class FloatSearchPlugin extends Plugin {
     if (this.cmdkModal) {
       this.cmdkModal.close();
     }
-    this.cmdkModal = new FloatSearchCmdkModal(this, initialFilters);
+    this.cmdkModal = new PaneSearchCmdkModal(this, initialFilters);
     this.cmdkModal.open();
   }
 
@@ -383,7 +383,7 @@ export default class FloatSearchPlugin extends Plugin {
     }, 0);
   }
 
-  /** Open the float search in the given (default: configured) view. */
+  /** Open the pane search in the given (default: configured) view. */
   openSearch(
     state: SearchState,
     viewType: SearchType = this.settings.defaultViewType,
@@ -403,7 +403,7 @@ export default class FloatSearchPlugin extends Plugin {
   initState() {
     // Initialize state with all default properties.
     // We intentionally do NOT inherit the persisted `query` from
-    // settings.searchViewState, so the float search always opens with a
+    // settings.searchViewState, so the pane search always opens with a
     // global (empty) scope. Folder/tag restrictions (path:/tag:) are only
     // applied when the user types them or picks a saved search chip.
     this.state = {
@@ -419,7 +419,7 @@ export default class FloatSearchPlugin extends Plugin {
       this.modal.close();
     }
 
-    this.modal = new FloatSearchModal(
+    this.modal = new PaneSearchModal(
       (state) => {
         // Preserve all state properties when updating from modal
         this.state = {
@@ -628,7 +628,7 @@ export default class FloatSearchPlugin extends Plugin {
   patchSearchView() {
     const checkCurrentViewType = (leaf: WorkspaceLeaf) => {
       const isModal =
-        activeDocument.querySelector(".float-search-modal") !== null;
+        activeDocument.querySelector(".pane-search-modal") !== null;
       const currentLeafRoot = leaf.getRoot();
       if (
         currentLeafRoot?.side &&
@@ -644,7 +644,7 @@ export default class FloatSearchPlugin extends Plugin {
       current: SearchType,
       originLeaf?: WorkspaceLeaf,
     ) => {
-      menu.dom.toggleClass("float-search-view-menu", true);
+      menu.dom.toggleClass("pane-search-view-menu", true);
       const availableViews = allViews.filter((view) => {
         if (current === "split") {
           return view.type !== "tab";
@@ -729,7 +729,7 @@ export default class FloatSearchPlugin extends Plugin {
               old.call(this);
 
               const viewSwitchEl = createDiv({
-                cls: "float-search-view-switch",
+                cls: "pane-search-view-switch",
               });
               const targetEl = this.filterSectionToggleEl;
               const viewSwitchButton = new ExtraButtonComponent(viewSwitchEl);
@@ -754,7 +754,7 @@ export default class FloatSearchPlugin extends Plugin {
               // repeated rebuilds (rebuildView -> onOpen) don't stack
               // multiple copies and bloat the search view DOM.
               const container = targetEl.parentElement;
-              container?.querySelector(".float-search-view-switch")?.remove();
+              container?.querySelector(".pane-search-view-switch")?.remove();
               container?.insertBefore(viewSwitchEl, targetEl);
               if (!this.hidePathToggle) {
                 this.hidePathToggle = new Setting(this.searchParamsContainerEl)
@@ -846,7 +846,7 @@ export default class FloatSearchPlugin extends Plugin {
             ) {
               if (typeof state.query === "string" && !state.triggerBySelf) {
                 if (self.queryLoaded) {
-                  // Re-route an external query to a Float Search,
+                  // Re-route an external query to a Pane Search,
                   // but guard against re-entrant spawning (which
                   // would recurse) and against spawning again for
                   // the SAME query (which would otherwise loop
@@ -868,7 +868,7 @@ export default class FloatSearchPlugin extends Plugin {
                       self.routing = false;
                     }
                   }
-                  // The Float Search takes over; do NOT apply the
+                  // The Pane Search takes over; do NOT apply the
                   // query to the native view (matches original
                   // behaviour and avoids a second redundant search).
                   return;
@@ -883,7 +883,7 @@ export default class FloatSearchPlugin extends Plugin {
         }),
       );
       // Rebuilding replays the view's state through the patched setters; that
-      // must not overwrite the saved float-search state.
+      // must not overwrite the saved pane-search state.
       this.suppressViewStatePersist = true;
       searchView.leaf?.rebuildView();
       window.setTimeout(() => {
@@ -1228,7 +1228,7 @@ export default class FloatSearchPlugin extends Plugin {
         menu.addItem((item) => {
           // Add sub menu
           item
-            .setTitle(strings().menuSearchInFloat(searchWord))
+            .setTitle(strings().menuSearchInPane(searchWord))
             .setIcon("search")
             .onClick(() =>
               this.initModal(
@@ -1261,7 +1261,7 @@ export default class FloatSearchPlugin extends Plugin {
             menu.addItem((item) => {
               item
                 .setIcon("popup-open")
-                .setTitle(strings().menuOpenInFloatPreview)
+                .setTitle(strings().menuOpenInPanePreview)
                 .onClick(async () => {
                   if (this.modal) {
                     await this.modal.initFileView(file, undefined);
@@ -1286,7 +1286,7 @@ export default class FloatSearchPlugin extends Plugin {
     // Phosphor Bold: app-window + magnifying-glass (MIT)
     // https://phosphoricons.com/  256 viewBox scaled into Obsidian's 100x100 icon slot
     addIcon(
-      "float-search-window",
+      "pane-search-window",
       `<g transform="translate(3 10) scale(0.275)" fill="currentColor"><path d="M216,36H40A20,20,0,0,0,20,56V200a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A20,20,0,0,0,216,36Zm-4,160H44V60H212ZM60,92a16,16,0,1,1,16,16A16,16,0,0,1,60,92Zm48,0a16,16,0,1,1,16,16A16,16,0,0,1,108,92Z"/></g><g transform="translate(38 38) scale(0.24)" fill="currentColor"><path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/></g>`,
     );
     addIcon(

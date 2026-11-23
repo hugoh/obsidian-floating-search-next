@@ -24,11 +24,11 @@ import {
   isFileAllowed,
   mountFilterBar,
 } from "./filterBar";
-import type FloatSearchPlugin from "./floatSearchIndex";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
 import { promptForName } from "./namePrompt";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import { safeFileName, uniqueNotePath } from "./quickCreate";
 import {
   firstMatchLine,
@@ -45,8 +45,8 @@ const formatNow = (format: string): string =>
     format,
   );
 
-export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
-  plugin: FloatSearchPlugin;
+export class PaneSearchCmdkModal extends SuggestModal<CmdkResult> {
+  plugin: PaneSearchPlugin;
   private bodyEl: HTMLElement;
   private isComposing = false;
   private previewEl: HTMLElement | undefined;
@@ -77,7 +77,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
   // runSearch, so the heading phase need not re-evaluate them.
   private passedMeta: Set<string> | null = null;
 
-  constructor(plugin: FloatSearchPlugin, initialFilters?: string[]) {
+  constructor(plugin: PaneSearchPlugin, initialFilters?: string[]) {
     super(plugin.app);
     this.plugin = plugin;
     this.limit = 50;
@@ -91,8 +91,8 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
       { command: "Shift ↵", purpose: s.cmdkNewTab },
       { command: "esc", purpose: s.cmdkClose },
     ]);
-    this.modalEl.addClass("float-search-cmdk");
-    this.containerEl.addClass("float-search-cmdk-container");
+    this.modalEl.addClass("pane-search-cmdk");
+    this.containerEl.addClass("pane-search-cmdk-container");
   }
 
   onOpen() {
@@ -124,7 +124,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
       vault.on("rename", invalidate),
       vault.on("delete", invalidate),
     ];
-    this.bodyEl = createDiv("float-search-cmdk-body");
+    this.bodyEl = createDiv("pane-search-cmdk-body");
     this.modalEl.insertBefore(this.bodyEl, this.resultContainerEl);
     this.bodyEl.appendChild(this.resultContainerEl);
     const inputWrap = this.inputEl.closest<HTMLElement>(
@@ -136,7 +136,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
 
     // Render filter chip bar as its own horizontal row, above the results body
     this.filterBarEl = this.modalEl.createDiv({
-      cls: "float-search-filter-bar",
+      cls: "pane-search-filter-bar",
     });
     this.modalEl.insertBefore(this.filterBarEl, this.bodyEl);
     this.renderFilterBar();
@@ -173,7 +173,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
 
     for (const fb of buttons) {
       const chip = this.filterBarEl.createDiv({
-        cls: "float-search-filter-chip",
+        cls: "pane-search-filter-chip",
         text: fb.name,
       });
       if (this.activeFilters.includes(fb.query)) {
@@ -543,7 +543,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
     el.addClass("mod-complex");
 
     if (result.type === "create") {
-      el.addClass("float-search-cmdk-create-item");
+      el.addClass("pane-search-cmdk-create-item");
       const contentEl = el.createDiv("suggestion-content");
       const titleEl = contentEl.createDiv("suggestion-title");
       titleEl.setText(strings().cmdkCreateNote);
@@ -557,7 +557,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
     }
 
     if (result.type === "notice") {
-      el.addClass("float-search-cmdk-notice");
+      el.addClass("pane-search-cmdk-notice");
       el.createDiv("suggestion-content")
         .createDiv("suggestion-title")
         .setText(result.message);
@@ -699,7 +699,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
 
   private hidePreview() {
     this.previews.invalidate();
-    this.modalEl.removeClass("float-search-cmdk-expanded");
+    this.modalEl.removeClass("pane-search-cmdk-expanded");
     if (this.previewEl) {
       this.previewEl.hide();
     }
@@ -716,7 +716,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
 
   private async renderPreview(result: FileResult, isCurrent: () => boolean) {
     if (!this.previewEl) {
-      this.previewEl = this.bodyEl.createDiv("float-search-cmdk-preview");
+      this.previewEl = this.bodyEl.createDiv("pane-search-cmdk-preview");
       const [leaf, view] = spawnLeafView(this.plugin, this.previewEl);
       this.fileLeaf = leaf;
       this.fileEmbeddedView = view;
@@ -730,7 +730,7 @@ export class FloatSearchCmdkModal extends SuggestModal<CmdkResult> {
     await leaf.openFile(file, { active: false });
     if (this.closed || !isCurrent()) return;
     this.previewEl.show();
-    this.modalEl.addClass("float-search-cmdk-expanded");
+    this.modalEl.addClass("pane-search-cmdk-expanded");
 
     const eState = ephemeralStateFor(result);
     if (eState) leaf.setEphemeralState(eState);

@@ -1,6 +1,6 @@
 # Consolidation notes
 
-Floating Search Next brings the forks of [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search)
+This plugin brings the forks of [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search)
 together. This file records **where each feature came from** and **every fix made
 while merging and cleaning up**, so the history does not have to be reverse
 engineered from the commits. Keep it up to date when changing either.
@@ -30,8 +30,7 @@ Not taken:
   its scroll-to-top change is superseded by upstream's preview scroll-to-position,
   and its URI fix deletes `.suggestion-container` from the DOM after a 10ms timer.
 - Rebranding (plugin id `float-search-window`, version numbers 1.x / 4.4-4.8) from
-  the two forks. This project is its own plugin, **Floating Search Next**
-  (`floating-search-next`) and starts its own version line at 0.1.0.
+  the two forks. This plugin has its own id and starts its own version line at 0.1.0.
 - Agent notes, a stray temp file and `package-lock.json` from Peingxious's fork.
 
 All sources are GPL-3.0; see `LICENSE` and `NOTICE`.
@@ -149,15 +148,21 @@ Tracked from the code review; move a row to the fixes table when done.
 
 ## Naming and releasing
 
-- The upstream id `float-search` and name "Floating Search" belong to the original
-  listing, so this is a separate plugin. The "Next" suffix follows directory
-  precedent for maintained continuations (for example "Note Refactor Next").
+- The plugin is named Pane Search (id `pane-search`). The upstream id `float-search`
+  and name "Floating Search" belong to the original listing, so this is a separate
+  plugin. It was first named Floating Search Next (`floating-search-next`) and
+  positioned as a successor; the "Next" suffix was dropped when that framing was
+  reconsidered, and the name remains provisional.
+- For now the plugin is not listed on the Obsidian Community site. Forks need the
+  original author's approval to be listed, so it is installed with BRAT until that is
+  sorted out (see the README).
 - Installing both at once conflicts (same patched internals, same `obsidian://fs`
-  handler, same CSS class names); the README says to disable the original first.
-- Settings are stored per plugin id, so users start fresh; there is no automatic import.
-- Versions start at 0.1.0: the files carry `0.0.0` and `release-as: 0.1.0` in
-  `release-please-config.json` forces the first release. Remove `release-as`
-  after that release. While below 1.0, `bump-minor-pre-major` keeps breaking
-  changes in the 0.x line.
+  handler); the README advises against running them together. The CSS classes no
+  longer overlap, since this plugin uses `pane-search-` rather than `float-search-`.
+- Settings are stored per plugin id, so users start fresh, including anyone who
+  installed `floating-search-next`; there is no automatic import.
+- Versions started at 0.1.0 (the first release was forced with `release-as`, which
+  has since been removed from `release-please-config.json`). While below 1.0,
+  `bump-minor-pre-major` keeps breaking changes in the 0.x line.
 - Differences from upstream 4.3.0 that users should know about: minimum Obsidian 1.13.0, `block:`/`section:`/`line:`
   semantics, saved-search command ids, the new plugin id.

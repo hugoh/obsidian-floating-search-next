@@ -7,7 +7,7 @@ import {
   waitForPlugin,
 } from "./helpers";
 
-const TITLES = ".float-search-modal .search-result-file-title";
+const TITLES = ".pane-search-modal .search-result-file-title";
 
 async function waitForResults() {
   await browser.waitUntil(async () => (await browser.$$(TITLES)).length > 0, {
@@ -16,7 +16,7 @@ async function waitForResults() {
   });
 }
 
-const SEARCH_INPUT = ".float-search-modal .search-input-container input";
+const SEARCH_INPUT = ".pane-search-modal .search-input-container input";
 
 async function nativeTitles(): Promise<string[]> {
   return browser.execute(
@@ -37,7 +37,7 @@ async function nudgeSearch() {
   }, SEARCH_INPUT);
 }
 
-describe("Floating native search", () => {
+describe("Pane native search", () => {
   afterEach(async () => {
     await closeModals();
     await updateSettings({ excludeFolders: [], excludeFiles: [] });
@@ -48,9 +48,7 @@ describe("Floating native search", () => {
     await browser.executeObsidianCommand(
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
-    const input = browser.$(
-      ".float-search-modal .search-input-container input",
-    );
+    const input = browser.$(".pane-search-modal .search-input-container input");
     await input.waitForExist();
     await browser.waitUntil(() => input.isFocused(), {
       timeoutMsg: "the search input never received focus",
@@ -69,9 +67,7 @@ describe("Floating native search", () => {
   it("keeps text typed into an empty search separate from the exclusion clause", async () => {
     await updateSettings({ excludeFolders: ["Archive"] });
     await searchFor("pineapple");
-    const input = browser.$(
-      ".float-search-modal .search-input-container input",
-    );
+    const input = browser.$(".pane-search-modal .search-input-container input");
     expect(await input.getValue()).toBe("pineapple -path:/^Archive\\//");
   });
 
@@ -120,7 +116,7 @@ describe("Floating native search", () => {
         return texts.includes("Pineapple");
       },
       {
-        timeoutMsg: `the native search never listed Pineapple; saw ${JSON.stringify(texts)} for input ${JSON.stringify(await browser.$(".float-search-modal .search-input-container input").getValue())}`,
+        timeoutMsg: `the native search never listed Pineapple; saw ${JSON.stringify(texts)} for input ${JSON.stringify(await browser.$(".pane-search-modal .search-input-container input").getValue())}`,
       },
     );
     expect(texts).not.toContain("Old");

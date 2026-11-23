@@ -1,6 +1,6 @@
 import { browser } from "@wdio/globals";
 
-export const PLUGIN_ID = "floating-search-next";
+export const PLUGIN_ID = "pane-search";
 
 export async function waitForPlugin() {
   await browser.waitUntil(
@@ -43,7 +43,7 @@ export async function openCmdk(initialFilters?: string[]) {
     PLUGIN_ID,
     initialFilters,
   );
-  const input = browser.$(".float-search-cmdk .prompt-input");
+  const input = browser.$(".pane-search-cmdk .prompt-input");
   await input.waitForExist();
   return input;
 }
@@ -64,7 +64,7 @@ export async function resultTexts(): Promise<string[]> {
   return browser.execute(() =>
     Array.from(
       document.querySelectorAll<HTMLElement>(
-        ".float-search-cmdk .suggestion-item",
+        ".pane-search-cmdk .suggestion-item",
       ),
       (item) => item.innerText,
     ),

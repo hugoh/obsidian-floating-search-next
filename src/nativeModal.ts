@@ -13,10 +13,10 @@ import {
   mountFilterBar,
   watchNativeSearchResults,
 } from "./filterBar";
-import type FloatSearchPlugin from "./floatSearchIndex";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import { noteNameFromText } from "./quickCreate";
 import type { SearchState } from "./settings";
 
@@ -28,10 +28,10 @@ function createInstructionElement(
 ) {
   const divEl = parentEl.createDiv({ cls: divCls });
   const iconEl = divEl.createSpan({
-    cls: "float-search-modal-instructions-key",
+    cls: "pane-search-modal-instructions-key",
   });
   const textEl = divEl.createSpan({
-    cls: "float-search-modal-instructions-text",
+    cls: "pane-search-modal-instructions-text",
   });
 
   iconEl.setText(keyText);
@@ -45,8 +45,8 @@ export interface PreviewState extends Record<string, unknown> {
   match?: { content?: string; matches?: unknown[] };
 }
 
-export class FloatSearchModal extends Modal {
-  private readonly plugin: FloatSearchPlugin;
+export class PaneSearchModal extends Modal {
+  private readonly plugin: PaneSearchPlugin;
   private searchEmbeddedView: EmbeddedView;
   private fileEmbeddedView: EmbeddedView | undefined;
 
@@ -76,7 +76,7 @@ export class FloatSearchModal extends Modal {
 
   constructor(
     cb: (state: SearchState) => void,
-    plugin: FloatSearchPlugin,
+    plugin: PaneSearchPlugin,
     state: SearchState,
     viewType = "search",
   ) {
@@ -92,10 +92,10 @@ export class FloatSearchModal extends Modal {
     const { contentEl, containerEl, modalEl } = this;
 
     this.searchCtnEl = contentEl.createDiv({
-      cls: "float-search-modal-search-ctn",
+      cls: "pane-search-modal-search-ctn",
     });
     this.instructionsEl = modalEl.createDiv({
-      cls: "float-search-modal-instructions",
+      cls: "pane-search-modal-instructions",
     });
 
     this.initInstructions(this.instructionsEl);
@@ -146,49 +146,49 @@ export class FloatSearchModal extends Modal {
     const s = strings();
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-navigate",
+      "pane-search-modal-instructions-navigate",
       "↑↓",
       s.instrNavigate,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-collapse",
+      "pane-search-modal-instructions-collapse",
       "Shift+↑↓",
       s.instrCollapse,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-enter",
+      "pane-search-modal-instructions-enter",
       "↵",
       s.instrOpenBackground,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-alt-enter",
+      "pane-search-modal-instructions-alt-enter",
       "Alt+↵",
       s.instrOpenAndClose,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-ctrl-enter",
+      "pane-search-modal-instructions-ctrl-enter",
       "Ctrl+↵",
       s.instrCreateIfMissing,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-tab",
+      "pane-search-modal-instructions-tab",
       "Tab/Shift+Tab",
       s.instrPreview,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-switch",
+      "pane-search-modal-instructions-switch",
       "Ctrl+G",
       s.instrSwitchView,
     );
     createInstructionElement(
       instructionsEl,
-      "float-search-modal-instructions-click",
+      "pane-search-modal-instructions-click",
       "Alt+Click",
       s.instrAltClick,
     );
@@ -199,9 +199,9 @@ export class FloatSearchModal extends Modal {
     modalEl: HTMLElement,
     containerEl: HTMLElement,
   ) {
-    contentEl.classList.add("float-search-modal-content");
-    modalEl.classList.add("float-search-modal");
-    containerEl.classList.add("float-search-modal-container");
+    contentEl.classList.add("pane-search-modal-content");
+    modalEl.classList.add("pane-search-modal");
+    containerEl.classList.add("pane-search-modal-container");
   }
 
   async initSearchView(contentEl: HTMLElement) {
@@ -399,7 +399,7 @@ export class FloatSearchModal extends Modal {
               this.fileLeaf?.detach();
               this.fileLeaf = undefined;
               this.fileEmbeddedView?.unload();
-              this.modalEl.toggleClass("float-search-width", false);
+              this.modalEl.toggleClass("pane-search-width", false);
               this.fileEl.detach();
 
               break;
@@ -548,7 +548,7 @@ export class FloatSearchModal extends Modal {
     this.fileLeaf = undefined;
     this.fileEmbeddedView = undefined;
     this.fileEl?.remove();
-    this.modalEl.removeClass("float-search-width");
+    this.modalEl.removeClass("pane-search-width");
   }
 
   async initFileView(file: TFile, state: PreviewState | undefined) {
@@ -598,10 +598,10 @@ export class FloatSearchModal extends Modal {
 
     const { contentEl } = this;
     this.fileEl = contentEl.createDiv({
-      cls: "float-search-modal-file-ctn",
+      cls: "pane-search-modal-file-ctn",
     });
     contentEl.addClass("has-file-ctn");
-    this.modalEl.toggleClass("float-search-width", true);
+    this.modalEl.toggleClass("pane-search-width", true);
     this.fileEl.onkeydown = (e) => {
       if (e.ctrlKey && e.key === "g") {
         e.preventDefault();

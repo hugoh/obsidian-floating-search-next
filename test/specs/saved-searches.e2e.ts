@@ -31,7 +31,7 @@ describe("Saved searches", () => {
     await browser.executeObsidianCommand(
       `${PLUGIN_ID}:savedsearch-${presetId}`,
     );
-    await browser.$(".float-search-cmdk").waitForExist();
+    await browser.$(".pane-search-cmdk").waitForExist();
     await waitForResult("Banana");
     expect(await hasResult("Pineapple")).toBe(false);
   });
@@ -41,7 +41,7 @@ describe("Saved searches", () => {
       savedSearches: [{ name: "Archive", query: "path:Archive" }],
     });
     await openCmdk();
-    const chip = browser.$(".float-search-filter-chip=Archive");
+    const chip = browser.$(".pane-search-filter-chip=Archive");
     await chip.waitForExist();
     await chip.click();
     await waitForResult("Old");

@@ -18,14 +18,14 @@ class NamePromptModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass("float-search-prompt");
+    contentEl.addClass("pane-search-prompt");
     contentEl.createEl("h3", { text: strings().saveAsPreset });
     const input = contentEl.createEl("input", {
       type: "text",
       placeholder: strings().presetName,
     });
     input.value = this.defaultValue;
-    const row = contentEl.createDiv({ cls: "float-search-prompt-row" });
+    const row = contentEl.createDiv({ cls: "pane-search-prompt-row" });
     const ok = row.createEl("button", { text: strings().save });
     const cancel = row.createEl("button", { text: strings().cancel });
 

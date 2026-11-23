@@ -150,6 +150,6 @@ describe("obsidian://fs", () => {
         viewType: "hologram",
       });
     });
-    await browser.$(".float-search-modal").waitForExist({ timeout: 10_000 });
+    await browser.$(".pane-search-modal").waitForExist({ timeout: 10_000 });
   });
 });

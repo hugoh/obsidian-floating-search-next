@@ -23,8 +23,8 @@ export interface FilterHost {
   app: App;
 }
 
-const CASE_ICON = "float-search-case";
-const REGEX_ICON = "float-search-regex";
+const CASE_ICON = "pane-search-case";
+const REGEX_ICON = "pane-search-regex";
 
 // Phosphor icons drawn on a 256 grid, scaled into Obsidian's 100x100 icon slot.
 const FILTER_ICONS: Record<string, string> = {
@@ -314,7 +314,7 @@ export function mountFilterBar(
     refreshMarker();
     onChange();
   };
-  const row = createDiv({ cls: "float-search-filter-row" });
+  const row = createDiv({ cls: "pane-search-filter-row" });
 
   // Filters persist across sessions, so say so when any of them is hiding results.
   const addMarker = () => {

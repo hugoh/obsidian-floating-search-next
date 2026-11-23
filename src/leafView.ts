@@ -18,7 +18,7 @@ import {
   WorkspaceSplit,
   WorkspaceTabs,
 } from "obsidian";
-import type FloatSearchPlugin from "src/floatSearchIndex";
+import type PaneSearchPlugin from "src/paneSearchIndex";
 import type { OpenViewState } from "src/types/types-obsidian";
 
 export interface EmbeddedViewParent {
@@ -59,7 +59,7 @@ function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
 }
 
 export const spawnLeafView = (
-  plugin: FloatSearchPlugin,
+  plugin: PaneSearchPlugin,
   initiatingEl?: HTMLElement,
   leaf?: WorkspaceLeaf,
   onShowCallback?: () => unknown,
@@ -114,7 +114,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
   originalLinkText: string;
   static activePopover?: EmbeddedView;
 
-  static activeWindows(plugin: FloatSearchPlugin) {
+  static activeWindows(plugin: PaneSearchPlugin) {
     const windows: Window[] = [window];
     const { floatingSplit } = plugin.app.workspace;
     if (floatingSplit) {
@@ -125,7 +125,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
     return windows;
   }
 
-  static containerForDocument(doc: Document, plugin: FloatSearchPlugin) {
+  static containerForDocument(doc: Document, plugin: PaneSearchPlugin) {
     if (doc !== window.document && plugin.app.workspace.floatingSplit)
       for (const container of plugin.app.workspace.floatingSplit.children) {
         if (container.doc === doc) return container;
@@ -133,7 +133,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
     return plugin.app.workspace.rootSplit;
   }
 
-  static activePopovers(plugin: FloatSearchPlugin) {
+  static activePopovers(plugin: PaneSearchPlugin) {
     return this.activeWindows(plugin).flatMap((win) =>
       this.popoversForWindow(win),
     );
@@ -158,7 +158,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
   static iteratePopoverLeaves(
     ws: Workspace,
     cb: (leaf: WorkspaceLeaf) => boolean | void,
-    plugin: FloatSearchPlugin,
+    plugin: PaneSearchPlugin,
   ) {
     for (const popover of this.activePopovers(plugin)) {
       if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
@@ -175,7 +175,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
   constructor(
     parent: EmbeddedViewParent,
     public targetEl: HTMLElement,
-    public plugin: FloatSearchPlugin,
+    public plugin: PaneSearchPlugin,
     waitTime?: number,
     public onShowCallback?: () => unknown,
   ) {

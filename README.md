@@ -1,20 +1,37 @@
-# Floating Search Next
+# Pane Search
+
+> **Work in progress.** This project was first positioned as a successor to Floating Search. We are rethinking that framing, so its scope, features and name may change. For now, it is not available in the Obsidian Community plugin store.
 
 Use Obsidian's search in a floating modal, split, tab or pop-out window, with a quick switcher, filters and saved searches.
 
-> **About this plugin.** Floating Search Next is a maintained continuation of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. The original is no longer actively maintained, and several people have kept it alive in their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
->
-> Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. Let us hope it turns out better than the comic predicts. If you maintain a fork with something worth including, please open an issue or PR.
+## About this plugin
+
+Pane Search is a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. It also consolidates two other forks of it, [Float Search Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) by AiurArtanis and [Obsidian Float Search](https://github.com/Peingxious/Obsidian-Float-Search) by Peingxious, each of which fixed and added different things. The initial goal was to bring them together into one cleaned-up codebase: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
+
+See [Credits and licensing](#credits-and-licensing) for the full lineage and [docs/consolidation.md](docs/consolidation.md) for where each feature came from and every fix made while merging.
+
+Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. PRs welcome.
+
+## Installation
+
+Until the plugin is available in the Community plugin store, install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+
+1. Install and enable **BRAT** from **Settings → Community plugins**.
+2. Open the command palette and run **BRAT: Add a beta plugin for testing**.
+3. Enter `hugoh/obsidian-pane-search` and confirm.
+4. Enable **Pane Search** under **Settings → Community plugins**.
+
+BRAT also keeps the plugin up to date.
 
 ## Coming from Floating Search?
 
-Disable or uninstall the original **Floating Search** plugin before enabling this one. Both change the same parts of Obsidian and both answer `obsidian://fs` links, so running them together causes conflicts.
+Both **Floating Search** and this plugin change the same parts of Obsidian and answer `obsidian://fs` links, so avoid running them together.
 
-Settings are stored per plugin, so nothing carries over automatically: set your options again and re-add any saved searches and hidden folders. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Floating Search Next").
+Settings are stored per plugin, so nothing carries over automatically: set your options again and re-add any saved searches and hidden folders. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Pane Search").
 
 ![float-search.png](media/img.png)
 
-- Set hotkey for open float search quickly.
+- Set hotkey for open pane search quickly.
 
 ## 使用说明 | Usage
 
@@ -42,7 +59,7 @@ Settings are stored per plugin, so nothing carries over automatically: set your 
     - When no file is being previewed:
         - Clicking a search result with the mouse will automatically close the popup and navigate to the file, and other behavior is the same as Obsidian's default behavior;
 4. **The right-click context menu can quickly search the selected text**;
-5. **There is a default `obsidian://fs?query=xxxxxx` URI command, which you can use to invoke Float search from external sources**;
+5. **There is a default `obsidian://fs?query=xxxxxx` URI command, which you can use to invoke Pane Search from external sources**;
 6. **When you click to navigate within the previewed file page, the current previewed file page will be automatically replaced**.
 
 ---
@@ -71,7 +88,7 @@ Settings are stored per plugin, so nothing carries over automatically: set your 
     - 当不存在文件在预览中时：
         - 用鼠标点击搜索结果自动关闭弹窗且跳转文件夹，其它与 Obsidian 的默认行为一样；
 4. **右键菜单可以快速搜索选中的文本**；
-5. **有一个默认的 `obsidian://fs?query=xxxxxx` 的 URI 命令，你可以用这个命令来从外部唤起 Float search**
+5. **有一个默认的 `obsidian://fs?query=xxxxxx` 的 URI 命令，你可以用这个命令来从外部唤起 Pane Search**
 6. **当你在预览文件页面中点击跳转时，会自动覆盖当前的预览文件页面**。
 
 ---
@@ -96,7 +113,7 @@ Everything below is in addition to the usage described above.
 
 ### Hide from results (exclusions)
 
-- Hide folders and notes from Float Search results (settings → Filters), picked from your real vault with autocomplete. They are removed from quick search and applied to the global search as `-path:` clauses that are stripped again before the query is saved.
+- Hide folders and notes from Pane Search results (settings → Filters), picked from your real vault with autocomplete. They are removed from quick search and applied to the global search as `-path:` clauses that are stripped again before the query is saved.
 - This is a convenience filter, **not a privacy control**: it only affects this plugin's results, and the clause is visible and editable in the search box. Obsidian's own search and other views are unaffected.
 
 ### Saved searches

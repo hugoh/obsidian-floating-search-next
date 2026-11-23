@@ -8,8 +8,8 @@ import {
   TFile,
   TFolder,
 } from "obsidian";
-import type FloatSearchPlugin from "./floatSearchIndex";
 import { strings } from "./i18n";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import type { CmdkTriggerKey } from "./settings";
 import { DOUBLE_TAP_RANGE } from "./settings";
 
@@ -68,10 +68,10 @@ class PathSuggest extends AbstractInputSuggest<TFolder | TFile> {
   }
 }
 
-export class FloatSearchSettingTab extends PluginSettingTab {
-  plugin: FloatSearchPlugin;
+export class PaneSearchSettingTab extends PluginSettingTab {
+  plugin: PaneSearchPlugin;
 
-  constructor(app: App, plugin: FloatSearchPlugin) {
+  constructor(app: App, plugin: PaneSearchPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
