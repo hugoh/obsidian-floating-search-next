@@ -1,12 +1,27 @@
 # Pane Search
 
-> **Work in progress.** This project was first positioned as a successor to Floating Search. We are rethinking that framing, so its scope, features and name may change.
+> **Work in progress.** This project was first positioned as a successor to Floating Search. We are rethinking that framing, so its scope, features and name may change. For now, it is not available in the Obsidian Community plugin store.
 
 Use Obsidian's search in a floating modal, split, tab or pop-out window, with a quick switcher, filters and saved searches.
 
-> **About this plugin.** Pane Search is a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. Several people have also published their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
->
-> Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. Let us hope it turns out better than the comic predicts. If you maintain a fork with something worth including, please open an issue or PR.
+## About this plugin
+
+Pane Search is a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. It also consolidates two other forks of it, [Float Search Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) by AiurArtanis and [Obsidian Float Search](https://github.com/Peingxious/Obsidian-Float-Search) by Peingxious, each of which fixed and added different things. The initial goal was to bring them together into one cleaned-up codebase: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
+
+See [Credits and licensing](#credits-and-licensing) for the full lineage and [docs/consolidation.md](docs/consolidation.md) for where each feature came from and every fix made while merging.
+
+Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. PRs welcome.
+
+## Installation
+
+Until the plugin is available in the Community plugin store, install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat):
+
+1. Install and enable **BRAT** from **Settings → Community plugins**.
+2. Open the command palette and run **BRAT: Add a beta plugin for testing**.
+3. Enter `hugoh/pane-search` and confirm.
+4. Enable **Pane Search** under **Settings → Community plugins**.
+
+BRAT also keeps the plugin up to date.
 
 ## Coming from Floating Search?
 
