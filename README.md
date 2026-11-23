@@ -1,8 +1,10 @@
 # Floating Search Next
 
+> **Work in progress.** This project was first positioned as a successor to Floating Search. We are rethinking that framing, so its scope, features and name may change.
+
 Use Obsidian's search in a floating modal, split, tab or pop-out window, with a quick switcher, filters and saved searches.
 
-> **About this plugin.** Floating Search Next is a maintained continuation of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. Several people have also published their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
+> **About this plugin.** Floating Search Next is a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. Several people have also published their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
 >
 > Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. Let us hope it turns out better than the comic predicts. If you maintain a fork with something worth including, please open an issue or PR.
 
