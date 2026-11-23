@@ -2,13 +2,13 @@
 
 Use Obsidian's search in a floating modal, split, tab or pop-out window, with a quick switcher, filters and saved searches.
 
-> **About this plugin.** Floating Search Next is a maintained continuation of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. The original is no longer actively maintained, and several people have kept it alive in their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
+> **About this plugin.** Floating Search Next is a maintained continuation of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall. Several people have also published their own forks, each fixing and adding different things. The goal here is to **bring all of those forks together into one cleaned-up codebase**: harvest what is useful from each, reconcile the overlaps, add tests, and fix the lint backlog.
 >
 > Yes, we are aware of [xkcd 927](https://xkcd.com/927/): this is, technically, *yet another fork*, created to standardize all the forks. Let us hope it turns out better than the comic predicts. If you maintain a fork with something worth including, please open an issue or PR.
 
 ## Coming from Floating Search?
 
-Disable or uninstall the original **Floating Search** plugin before enabling this one. Both change the same parts of Obsidian and both answer `obsidian://fs` links, so running them together causes conflicts.
+Both **Floating Search** and this plugin change the same parts of Obsidian and answer `obsidian://fs` links, so avoid running them together.
 
 Settings are stored per plugin, so nothing carries over automatically: set your options again and re-add any saved searches and hidden folders. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Floating Search Next").
 
