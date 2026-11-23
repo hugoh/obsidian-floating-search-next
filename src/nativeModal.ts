@@ -13,10 +13,10 @@ import {
   mountFilterBar,
   watchNativeSearchResults,
 } from "./filterBar";
-import type PaneSearchPlugin from "./paneSearchIndex";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import { noteNameFromText } from "./quickCreate";
 import type { SearchState } from "./settings";
 

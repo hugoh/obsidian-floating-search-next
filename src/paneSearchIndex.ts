@@ -35,8 +35,8 @@ import { escapeRegex } from "./regex";
 import { SearchFilter } from "./searchFilter";
 import {
   DEFAULT_SETTINGS,
-  type PaneSearchSettings,
   newSavedSearchId,
+  type PaneSearchSettings,
   parseViewType,
   type SearchState,
   type SearchType,

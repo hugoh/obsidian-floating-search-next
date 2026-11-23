@@ -24,11 +24,11 @@ import {
   isFileAllowed,
   mountFilterBar,
 } from "./filterBar";
-import type PaneSearchPlugin from "./paneSearchIndex";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
 import { promptForName } from "./namePrompt";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import { safeFileName, uniqueNotePath } from "./quickCreate";
 import {
   firstMatchLine,

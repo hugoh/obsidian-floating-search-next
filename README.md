@@ -18,7 +18,7 @@ Until the plugin is available in the Community plugin store, install it with [BR
 
 1. Install and enable **BRAT** from **Settings → Community plugins**.
 2. Open the command palette and run **BRAT: Add a beta plugin for testing**.
-3. Enter `hugoh/pane-search` and confirm.
+3. Enter `hugoh/obsidian-pane-search` and confirm.
 4. Enable **Pane Search** under **Settings → Community plugins**.
 
 BRAT also keeps the plugin up to date.

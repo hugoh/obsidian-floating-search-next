@@ -48,9 +48,7 @@ describe("Pane native search", () => {
     await browser.executeObsidianCommand(
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
-    const input = browser.$(
-      ".pane-search-modal .search-input-container input",
-    );
+    const input = browser.$(".pane-search-modal .search-input-container input");
     await input.waitForExist();
     await browser.waitUntil(() => input.isFocused(), {
       timeoutMsg: "the search input never received focus",
@@ -69,9 +67,7 @@ describe("Pane native search", () => {
   it("keeps text typed into an empty search separate from the exclusion clause", async () => {
     await updateSettings({ excludeFolders: ["Archive"] });
     await searchFor("pineapple");
-    const input = browser.$(
-      ".pane-search-modal .search-input-container input",
-    );
+    const input = browser.$(".pane-search-modal .search-input-container input");
     expect(await input.getValue()).toBe("pineapple -path:/^Archive\\//");
   });
 

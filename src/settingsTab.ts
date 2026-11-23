@@ -8,8 +8,8 @@ import {
   TFile,
   TFolder,
 } from "obsidian";
-import type PaneSearchPlugin from "./paneSearchIndex";
 import { strings } from "./i18n";
+import type PaneSearchPlugin from "./paneSearchIndex";
 import type { CmdkTriggerKey } from "./settings";
 import { DOUBLE_TAP_RANGE } from "./settings";
 
