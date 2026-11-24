@@ -1,7 +1,6 @@
 import "obsidian";
 import {
   EditorPosition,
-  Loc,
   MarkdownPreviewRenderer,
   MarkdownSubView,
   PluginManifest,
@@ -11,7 +10,6 @@ import {
   View,
   WorkspaceLeaf,
 } from "obsidian";
-import { EmbeddedViewParent } from "../leafView";
 
 interface InternalPlugins {
   switcher: QuickSwitcherPlugin;
@@ -157,10 +155,6 @@ declare module "obsidian" {
     parent: WorkspaceParent | null;
   }
 
-  interface MarkdownEditView {
-    editorEl: HTMLElement;
-  }
-
   class MarkdownPreviewRendererStatic extends MarkdownPreviewRenderer {
     static registerDomEvents(
       el: HTMLElement,
@@ -284,13 +278,6 @@ declare module "obsidian" {
     createNewMarkdownFile(folder: TFolder, fileName: string): Promise<TFile>;
   }
 
-  enum PopoverState {
-    Showing,
-    Shown,
-    Hiding,
-    Hidden,
-  }
-
   interface Menu {
     items: MenuItem[];
     dom: HTMLElement;
@@ -302,47 +289,8 @@ declare module "obsidian" {
     dom: HTMLElement;
   }
 
-  interface EphemeralState {
-    focus?: boolean;
-    subpath?: string;
-    line?: number;
-    startLoc?: Loc;
-    endLoc?: Loc;
-    scroll?: number;
-  }
-
-  interface HoverParent {
-    type?: string;
-  }
-
   interface WorkspaceContainer {
     type: "window" | "split" | "tab";
-  }
-
-  interface HoverPopover {
-    parent: EmbeddedViewParent | null;
-    targetEl: HTMLElement;
-    hoverEl: HTMLElement;
-
-    position(pos?: MousePos): void;
-
-    hide(): void;
-
-    show(): void;
-
-    shouldShowSelf(): boolean;
-
-    timer: number;
-    waitTime: number;
-
-    shouldShow(): boolean;
-
-    transition(): void;
-  }
-
-  interface MousePos {
-    x: number;
-    y: number;
   }
 
   interface Plugin {

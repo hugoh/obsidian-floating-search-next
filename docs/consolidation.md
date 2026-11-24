@@ -172,8 +172,8 @@ Each entry: what was wrong, why, the fix, and what guards it now.
   and name "Floating Search" belong to the original listing, so this is a separate
   plugin. It was first named Floating Search Next (`floating-search-next`) and
   positioned as a successor, then Pane Search (`pane-search`), and was renamed once
-  it narrowed to opening the file that matches a search. The GitHub repository is
-  still `hugoh/obsidian-pane-search`.
+  it narrowed to opening the file that matches a search. The GitHub repository was
+  renamed to `hugoh/obsidian-search-open` at the same time (the old URL redirects).
 - For now the plugin is not listed on the Obsidian Community site. Forks need the
   original author's approval to be listed, so it is installed with BRAT until that is
   sorted out (see the README).

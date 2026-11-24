@@ -26,6 +26,8 @@ describe("README screenshot", () => {
     await browser
       .$(`${MODAL} .search-open-modal-file-ctn`)
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    // A resting pointer would highlight whichever result is under it.
+    await browser.action("pointer").move({ x: 2, y: 2 }).perform();
     await browser.pause(1000);
     await browser.$(MODAL).saveScreenshot(path.resolve("media/screenshot.png"));
   });
