@@ -38,8 +38,8 @@ describe("Pane native search", () => {
 
   it("does not write the search text to disk", async () => {
     await searchFor("topsecretneedle");
-    await closeModals();
     await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.close();
       app.plugins.plugins[id].applySettingsUpdate();
     }, PLUGIN_ID);
     await browser.pause(1800);
@@ -49,5 +49,38 @@ describe("Pane native search", () => {
       PLUGIN_ID,
     );
     expect(saved).not.toContain("topsecretneedle");
+  });
+
+  it("previews the focused result beside the search", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown", "Tab"]);
+    await browser
+      .$(".pane-search-modal .pane-search-modal-file-ctn")
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+  });
+
+  it("remembers the sort order chosen in the modal", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
+    );
+    await browser
+      .$(".pane-search-modal .search-input-container input")
+      .waitForExist();
+    await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.searchLeaf.view.setSortOrder(
+        "byModifiedTime",
+      );
+    }, PLUGIN_ID);
+    await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.close();
+    }, PLUGIN_ID);
+    const sortOrder = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].settings.searchViewState.sortOrder,
+      PLUGIN_ID,
+    );
+    expect(sortOrder).toBe("byModifiedTime");
   });
 });

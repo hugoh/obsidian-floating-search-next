@@ -276,9 +276,6 @@ declare module "obsidian" {
     searchComponent: SearchComponent;
     filterSectionToggleEl: HTMLElement;
     searchParamsContainerEl: HTMLElement;
-    hidePathToggle?: Setting;
-    showInstructionsToggle?: Setting;
-    defaultViewTypeDropdown?: Setting;
     infoEl?: HTMLElement;
     startSearch(): void;
     stopSearch?(): void;

@@ -217,8 +217,7 @@ export class PaneSearchModal extends Modal {
     if (this.closed) return;
     const inputEl = view.searchComponent?.inputEl;
     if (inputEl) {
-      if (this.state.current) inputEl.setSelectionRange(0, 0);
-      else inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
+      inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
     }
   }
 

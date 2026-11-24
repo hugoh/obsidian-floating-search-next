@@ -13,7 +13,6 @@ export interface SearchState extends Record<string, unknown> {
   matchingCase?: boolean;
   query: string;
   sortOrder?: SortOrder;
-  current?: boolean;
 }
 
 export interface PaneSearchSettings {

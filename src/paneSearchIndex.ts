@@ -8,17 +8,13 @@ import {
   type ObsidianProtocolData,
   type OpenViewState,
   Plugin,
-  requireApiVersion,
   type SearchResultDom,
   type SearchView,
-  Setting,
   setIcon,
   type TAbstractFile,
   TFile,
   View,
   Workspace,
-  WorkspaceContainer,
-  type WorkspaceItem,
   WorkspaceLeaf,
 } from "obsidian";
 import { strings } from "./i18n";
@@ -28,7 +24,6 @@ import {
   DEFAULT_SETTINGS,
   type PaneSearchSettings,
   type SearchState,
-  type SortOrder,
   sanitizeSettings,
 } from "./settings";
 import { PaneSearchSettingTab } from "./settingsTab";
@@ -48,16 +43,6 @@ interface CanvasLeafView {
   };
 }
 
-/** Methods of the native search view that Obsidian does not declare. */
-interface SearchViewPrototype {
-  onOpen(): unknown;
-  setExplainSearch(value: boolean): void;
-  setCollapseAll(value: boolean): void;
-  setExtraContext(value: boolean): void;
-  setMatchingCase(value: boolean): void;
-  setSortOrder(value: string): void;
-}
-
 /** The current (leaf, params) form of Workspace.setActiveLeaf. */
 interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
@@ -74,33 +59,13 @@ export default class PaneSearchPlugin extends Plugin {
   private state: SearchState;
   private modal: PaneSearchModal;
 
-  /** True while a freshly patched search view rebuilds itself. */
-  private suppressViewStatePersist = false;
-
-  persistViewState(patch: Partial<SearchState>) {
-    if (!this.app.workspace.layoutReady || this.suppressViewStatePersist)
-      return;
-    Object.assign(this.settings.searchViewState, patch);
-    this.applySettingsUpdate();
-  }
-
   public applySettingsUpdate = debounce(async () => {
-    // Ensure all search state properties are preserved
-    this.settings.searchViewState = {
-      ...DEFAULT_SETTINGS.searchViewState,
-      ...this.settings.searchViewState,
-      query: "",
-    };
     await this.saveSettings();
   }, 1000);
 
-  private applyStateUpdate = debounce(() => {
-    // Preserve all state properties when updating
-    this.state = {
-      ...DEFAULT_SETTINGS.searchViewState,
-      ...this.state,
-      query: "",
-    };
+  /** "With Last State" restores the last query only for this long. */
+  private forgetQuery = debounce(() => {
+    this.state = { ...this.state, query: "" };
   }, 30000);
 
   async onload() {
@@ -120,28 +85,26 @@ export default class PaneSearchPlugin extends Plugin {
     this.registerContextMenuHandler();
 
     this.addRibbonIcon("pane-search-window", strings().ribbonSearch, () =>
-      this.initModal(this.state, true, true),
+      this.initModal({ ...this.state, query: "" }),
     );
     this.updateFilePathVisibility();
     this.addSettingTab(new PaneSearchSettingTab(this.app, this));
   }
 
   onunload() {
-    // this.state = DEFAULT_SETTINGS.searchViewState;
     // Saving is debounced; do not drop a change made just before unloading.
     void this.applySettingsUpdate.run();
     this.modal?.close();
   }
 
-  // Candidate ⑤: run the prototype monkeypatches exactly once, on first use,
-  // instead of unconditionally at every startup.
+  // The monkeypatches are only needed once a search is opened, so they are
+  // applied on first use rather than at startup.
   private patched = false;
   private ensurePatched() {
     if (this.patched) return;
     this.patched = true;
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
-    this.patchSearchView();
     this.patchVchildren();
     this.patchDragManager();
     this.patchEditorHighlights();
@@ -198,11 +161,7 @@ export default class PaneSearchPlugin extends Plugin {
   }
 
   initState() {
-    // Initialize state with all default properties.
-    // We intentionally do NOT inherit the persisted `query` from
-    // settings.searchViewState, so the pane search always opens with a
-    // global (empty) scope. Folder/tag restrictions (path:/tag:) are only
-    // applied when the user types them or picks a saved search chip.
+    // The persisted query is never restored, so a search always opens global.
     this.state = {
       ...DEFAULT_SETTINGS.searchViewState,
       ...this.settings.searchViewState,
@@ -210,31 +169,24 @@ export default class PaneSearchPlugin extends Plugin {
     };
   }
 
-  initModal(state: SearchState, stateSave = false, clearQuery = false) {
+  initModal(state: SearchState) {
     this.ensurePatched();
-    if (this.modal) {
-      this.modal.close();
-    }
+    this.modal?.close();
 
     this.modal = new PaneSearchModal(
-      (state) => {
-        // Preserve all state properties when updating from modal
-        this.state = {
-          ...DEFAULT_SETTINGS.searchViewState,
-          ...state,
-        };
-        if (stateSave) this.applyStateUpdate();
+      (closing) => {
+        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();
+        this.forgetQuery();
       },
       this,
-      { ...state, query: clearQuery ? "" : state.query },
+      state,
     );
     this.modal.open();
   }
 
   patchWorkspace() {
-    let layoutChanging = false;
     // Keep the plugin receiver across native method wrappers.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
     const self = this;
@@ -258,57 +210,6 @@ export default class PaneSearchPlugin extends Plugin {
           }
           return next.apply(this, args);
         },
-      changeLayout(old) {
-        return async function (workspace: unknown) {
-          layoutChanging = true;
-          try {
-            // Don't consider hover popovers part of the workspace while it's changing
-            await old.call(this, workspace);
-          } finally {
-            layoutChanging = false;
-          }
-        };
-      },
-      iterateLeaves(native) {
-        type leafIterator = (item: WorkspaceLeaf) => boolean | undefined;
-        // Obsidian accepts (callback, item) and, in older versions, (item, callback).
-        const old = native as unknown as (
-          this: Workspace,
-          ...args: unknown[]
-        ) => boolean | undefined;
-        return function (this: Workspace, arg1: unknown, arg2: unknown) {
-          // Fast exit if desired leaf found
-          if (old.call(this, arg1, arg2)) return true;
-
-          // Handle old/new API parameter swap
-          const cb: leafIterator = (
-            typeof arg1 === "function" ? arg1 : arg2
-          ) as leafIterator;
-          const parent: WorkspaceItem = (
-            typeof arg1 === "function" ? arg2 : arg1
-          ) as WorkspaceItem;
-
-          if (!parent) return false; // <- during app startup, rootSplit can be null
-          if (layoutChanging) return false; // Don't let HEs close during workspace change
-
-          // 0.14.x doesn't have WorkspaceContainer; this can just be an instanceof check once 15.x is mandatory:
-
-          if (!requireApiVersion("0.15.0")) {
-            if (
-              parent === self.app.workspace.rootSplit ||
-              (WorkspaceContainer && parent instanceof WorkspaceContainer)
-            ) {
-              for (const popover of EmbeddedView.popoversForWindow(
-                (parent as WorkspaceContainer).win,
-              )) {
-                // Use old API here for compat w/0.14.x
-                if (old.call(this, cb, popover.rootSplit)) return false;
-              }
-            }
-          }
-          return false;
-        };
-      },
       pushUndoHistory(old) {
         return function (leaf: WorkspaceLeaf, id: string, ...args: unknown[]) {
           const viewState = leaf.getViewState();
@@ -422,131 +323,6 @@ export default class PaneSearchPlugin extends Plugin {
     );
   }
 
-  patchSearchView() {
-    // `layout-change` can fire again while the first patch is still awaiting
-    // a deferred view, so patching must be single-flight.
-    let patched = false;
-    let patching = false;
-    const patchSearch = async () => {
-      if (patched) return true;
-      if (patching) return false;
-      const searchLeaf = this.app.workspace.getLeavesOfType("search")[0];
-      if (!searchLeaf) return false;
-      patching = true;
-      try {
-        return await patchSearchViewOf(searchLeaf);
-      } finally {
-        patching = false;
-      }
-    };
-
-    const patchSearchViewOf = async (searchLeaf: WorkspaceLeaf) => {
-      if (requireApiVersion("1.7.3") && searchLeaf.isDeferred) {
-        await searchLeaf.loadIfDeferred();
-      }
-
-      const searchView = searchLeaf?.view as SearchView | undefined;
-      // Keep the plugin receiver across native method wrappers.
-      // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
-      const self = this;
-
-      if (!searchView) return false;
-
-      const searchViewPrototype = Object.getPrototypeOf(
-        searchView,
-      ) as SearchViewPrototype;
-
-      this.register(
-        around(searchViewPrototype, {
-          onOpen(old) {
-            return function (this: SearchView) {
-              old.call(this);
-
-              if (!this.hidePathToggle) {
-                this.hidePathToggle = new Setting(this.searchParamsContainerEl)
-                  .setName(strings().showFilePath)
-                  .addToggle((toggle) => {
-                    toggle.toggleEl.toggleClass("mod-small", true);
-                    toggle
-                      .setValue(self.settings.showFilePath)
-                      .onChange(async (value) => {
-                        self.settings.showFilePath = !value;
-                        self.changeFilePathVisibility();
-                        self.applySettingsUpdate();
-                      });
-                  });
-              }
-              if (!this.showInstructionsToggle) {
-                this.showInstructionsToggle = new Setting(
-                  this.searchParamsContainerEl,
-                )
-                  .setName(strings().showInstructions)
-                  .addToggle((toggle) => {
-                    toggle.toggleEl.toggleClass("mod-small", true);
-                    toggle
-                      .setValue(self.settings.showInstructions)
-                      .onChange(async (value) => {
-                        self.settings.showInstructions = value;
-                        self.applySettingsUpdate();
-                      });
-                  });
-              }
-            };
-          },
-          setExplainSearch(old) {
-            return function (this: SearchView, value: boolean) {
-              old.call(this, value);
-              self.persistViewState({ explainSearch: value });
-            };
-          },
-          setCollapseAll(old) {
-            return function (this: SearchView, value: boolean) {
-              old.call(this, value);
-              self.persistViewState({ collapseAll: value });
-            };
-          },
-          setExtraContext(old) {
-            return function (this: SearchView, value: boolean) {
-              old.call(this, value);
-              self.persistViewState({ extraContext: value });
-            };
-          },
-          setMatchingCase(old) {
-            return function (this: SearchView, value: boolean) {
-              old.call(this, value);
-              self.persistViewState({ matchingCase: value });
-            };
-          },
-          setSortOrder(old) {
-            return function (this: SearchView, value: string) {
-              old.call(this, value);
-              self.persistViewState({ sortOrder: value as SortOrder });
-            };
-          },
-        }),
-      );
-      // Rebuilding replays the view's state through the patched setters; that
-      // must not overwrite the saved pane-search state.
-      this.suppressViewStatePersist = true;
-      searchView.leaf?.rebuildView();
-      window.setTimeout(() => {
-        this.suppressViewStatePersist = false;
-      }, 250);
-      patched = true;
-      return true;
-    };
-    this.app.workspace.onLayoutReady(async () => {
-      if (!(await patchSearch())) {
-        const evt = this.app.workspace.on("layout-change", () => {
-          void patchSearch().then((done) => {
-            if (done) this.app.workspace.offref(evt);
-          });
-        });
-        this.registerEvent(evt);
-      }
-    });
-  }
-
   patchVchildren() {
     const patchSearchDom = () => {
       const searchView = this.app.workspace.getLeavesOfType("search")[0]
@@ -612,7 +388,7 @@ export default class PaneSearchPlugin extends Plugin {
             const result = old.call(this, e, a);
 
             window.setTimeout(() => {
-              self?.modal?.close();
+              self.modal?.close();
             }, 10);
             return result;
           };
@@ -626,11 +402,7 @@ export default class PaneSearchPlugin extends Plugin {
      * Handles obsidian://fs?query=... by opening the search modal.
      */
     this.registerObsidianProtocolHandler("fs", (path: ObsidianProtocolData) => {
-      this.initModal({
-        ...this.state,
-        query: path.query || "",
-        current: false,
-      });
+      this.initModal({ ...this.state, query: path.query || "" });
     });
   }
 
@@ -646,23 +418,13 @@ export default class PaneSearchPlugin extends Plugin {
     this.addCommand({
       id: "search-obsidian-globally",
       name: strings().cmdSearchGlobally,
-      callback: () =>
-        this.initModal(
-          { ...this.state, query: "", current: false },
-          false,
-          true,
-        ),
+      callback: () => this.initModal({ ...this.state, query: "" }),
     });
 
     this.addCommand({
       id: "search-obsidian-globally-state",
       name: strings().cmdSearchGloballyState,
-      callback: () =>
-        this.initModal(
-          { ...this.state, query: this.state.query, current: false },
-          true,
-          false,
-        ),
+      callback: () => this.initModal(this.state),
     });
   }
 
@@ -686,17 +448,7 @@ export default class PaneSearchPlugin extends Plugin {
           item
             .setTitle(strings().menuSearchInPane(searchWord))
             .setIcon("search")
-            .onClick(() =>
-              this.initModal(
-                {
-                  ...this.state,
-                  query: selection,
-                  current: false,
-                },
-                true,
-                false,
-              ),
-            );
+            .onClick(() => this.initModal({ ...this.state, query: selection }));
         });
       }),
     );
@@ -725,7 +477,7 @@ export default class PaneSearchPlugin extends Plugin {
                     return;
                   }
 
-                  this.initModal({ ...this.state, current: false }, true, true);
+                  this.initModal({ ...this.state, query: "" });
                   window.setTimeout(() => {
                     void this.modal.initFileView(file, undefined);
                   }, 20);
