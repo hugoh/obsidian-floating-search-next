@@ -1,6 +1,8 @@
 import {
   debounce,
+  Keymap,
   Modal,
+  Platform,
   type SearchResultItem,
   type SearchView,
   TFile,
@@ -11,6 +13,20 @@ import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
 import type PaneSearchPlugin from "./paneSearchIndex";
 import type { SearchState } from "./settings";
+
+/**
+ * Obsidian opens its search-operator menu whenever the input gains focus.
+ * Focus the input again with that one handler skipped, so a restored query
+ * does not come back with the menu open.
+ */
+function refocusWithoutSuggestions(inputEl: HTMLInputElement) {
+  inputEl.addEventListener("focus", (e) => e.stopImmediatePropagation(), {
+    capture: true,
+    once: true,
+  });
+  inputEl.blur();
+  inputEl.focus();
+}
 
 function createInstructionElement(
   parentEl: HTMLElement,
@@ -32,6 +48,12 @@ function createInstructionElement(
   return { divEl, iconEl, textEl };
 }
 
+/** Where the cursor and selection sat in the search box. */
+export interface Caret {
+  start: number;
+  end: number;
+}
+
 /** Where the preview should land: the matched text inside a result row. */
 export interface PreviewState extends Record<string, unknown> {
   match?: { content?: string; matches?: unknown[] };
@@ -45,15 +67,15 @@ export class PaneSearchModal extends Modal {
   searchLeaf: WorkspaceLeaf;
   fileLeaf: WorkspaceLeaf | undefined;
 
-  private cb: (state: SearchState) => void;
+  private cb: (state: SearchState, caret: Caret) => void;
   private state: SearchState;
+  private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
 
   private searchCtnEl: HTMLElement;
   private instructionsEl: HTMLElement;
   private fileEl: HTMLElement;
-  private viewType: string;
 
   private focusdItem: SearchResultItem | undefined;
   private closed = false;
@@ -65,16 +87,16 @@ export class PaneSearchModal extends Modal {
   }, 150);
 
   constructor(
-    cb: (state: SearchState) => void,
+    cb: (state: SearchState, caret: Caret) => void,
     plugin: PaneSearchPlugin,
     state: SearchState,
-    viewType = "search",
+    caret?: Caret,
   ) {
     super(plugin.app);
     this.plugin = plugin;
     this.cb = cb;
     this.state = state;
-    this.viewType = viewType;
+    this.caret = caret;
   }
 
   async onOpen() {
@@ -109,10 +131,18 @@ export class PaneSearchModal extends Modal {
 
     if (this.searchLeaf) {
       const saved = this.searchLeaf.view.getState();
-      this.cb({
-        ...saved,
-        query: typeof saved.query === "string" ? saved.query : "",
-      });
+      const inputEl = (this.searchLeaf.view as SearchView).searchComponent
+        ?.inputEl;
+      this.cb(
+        {
+          ...saved,
+          query: typeof saved.query === "string" ? saved.query : "",
+        },
+        {
+          start: inputEl?.selectionStart ?? 0,
+          end: inputEl?.selectionEnd ?? 0,
+        },
+      );
     }
 
     this.searchLeaf?.detach();
@@ -144,6 +174,12 @@ export class PaneSearchModal extends Modal {
       "pane-search-modal-instructions-enter",
       "↵",
       s.instrOpenAndClose,
+    );
+    createInstructionElement(
+      instructionsEl,
+      "pane-search-modal-instructions-mod-enter",
+      Platform.isMacOS ? "⌘↵" : "Ctrl+↵",
+      s.instrOpenNewTab,
     );
     createInstructionElement(
       instructionsEl,
@@ -196,7 +232,8 @@ export class PaneSearchModal extends Modal {
 
   /**
    * The view re-applies the saved state once it has settled, but never over
-   * text the user already typed; then the caret goes where the query ends.
+   * text the user already typed. The query is then selected, or, when
+   * reopening with the last state, the cursor goes back where it was.
    */
   private async settleInitialState(
     initialState: SearchState,
@@ -210,7 +247,15 @@ export class PaneSearchModal extends Modal {
     }
     if (this.closed) return;
     const inputEl = view.searchComponent?.inputEl;
-    if (inputEl) {
+    if (!inputEl) return;
+    if (this.caret) {
+      refocusWithoutSuggestions(inputEl);
+      const length = inputEl.value.length;
+      inputEl.setSelectionRange(
+        Math.min(this.caret.start, length),
+        Math.min(this.caret.end, length),
+      );
+    } else {
       inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
     }
   }
@@ -289,7 +334,9 @@ export class PaneSearchModal extends Modal {
           break;
         case "Enter":
           currentView.onKeyEnterInFocus(e);
-          if (currentView.dom.focusedItem) this.close();
+          if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
+            this.close();
+          }
           break;
         case "Tab":
           e.preventDefault();

@@ -33,6 +33,7 @@ export interface Strings {
   instrNavigate: string;
   instrCollapse: string;
   instrOpenAndClose: string;
+  instrOpenNewTab: string;
   instrPreview: string;
   instrSwitchView: string;
   instrAltClick: string;
@@ -49,6 +50,7 @@ const EN: Strings = {
   instrNavigate: "Navigate",
   instrCollapse: "Collapse/Expand",
   instrOpenAndClose: "Open File and Close",
+  instrOpenNewTab: "Open in New Tab, Keep Open",
   instrPreview: "Preview/Close Preview",
   instrSwitchView: "Switch Between Search and File View",
   instrAltClick: "Close Modal While In File View",
@@ -64,6 +66,7 @@ const ZH: Strings = {
   instrNavigate: "切换结果",
   instrCollapse: "折叠/展开",
   instrOpenAndClose: "打开并关闭弹窗",
+  instrOpenNewTab: "在新标签页打开并保留弹窗",
   instrPreview: "预览/关闭预览",
   instrSwitchView: "在搜索和预览间切换",
   instrAltClick: "预览时关闭弹窗",

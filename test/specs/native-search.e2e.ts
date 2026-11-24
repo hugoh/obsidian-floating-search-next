@@ -149,5 +149,75 @@ describe("Pane native search", () => {
         )) > before,
       { timeoutMsg: "Mod+Enter did not open a new tab" },
     );
+    expect(await browser.$(".pane-search-modal").isExisting()).toBe(true);
+  });
+
+  describe("reopening with the last state", () => {
+    const INPUT = ".pane-search-modal .search-input-container input";
+
+    async function reopenWithCaret(query: string, start: number, end: number) {
+      await waitForPlugin();
+      await browser.executeObsidian(
+        ({ app }, id, q) => {
+          const plugin = app.plugins.plugins[id];
+          plugin.initModal({ ...plugin.state, query: q });
+        },
+        PLUGIN_ID,
+        query,
+      );
+      const input = browser.$(INPUT);
+      await input.waitForExist();
+      await browser.execute(
+        (selector, a, b) => {
+          const el = document.querySelector<HTMLInputElement>(selector);
+          el?.focus();
+          el?.setSelectionRange(a, b);
+        },
+        INPUT,
+        start,
+        end,
+      );
+      await browser.executeObsidian(({ app }, id) => {
+        app.plugins.plugins[id].modal.close();
+      }, PLUGIN_ID);
+      await browser.executeObsidianCommand(
+        `${PLUGIN_ID}:search-obsidian-globally-state`,
+      );
+      await browser.$(INPUT).waitForExist();
+    }
+
+    const caret = () =>
+      browser.execute((selector) => {
+        const el = document.querySelector<HTMLInputElement>(selector);
+        return [el?.value, el?.selectionStart, el?.selectionEnd];
+      }, INPUT);
+
+    it("puts the cursor back where it was", async () => {
+      await reopenWithCaret("hello world", 3, 3);
+      await browser.waitUntil(
+        async () => (await caret()).join() === "hello world,3,3",
+        { timeoutMsg: `the caret moved: ${JSON.stringify(await caret())}` },
+      );
+    });
+
+    it("restores a selection too", async () => {
+      await reopenWithCaret("hello world", 2, 7);
+      await browser.waitUntil(
+        async () => (await caret()).join() === "hello world,2,7",
+        {
+          timeoutMsg: `the selection changed: ${JSON.stringify(await caret())}`,
+        },
+      );
+    });
+
+    it("does not show the search options menu", async () => {
+      await reopenWithCaret("pa", 2, 2);
+      await browser.pause(600);
+      expect(
+        await browser
+          .$(".suggestion-container.mod-search-suggestion")
+          .isExisting(),
+      ).toBe(false);
+    });
   });
 });

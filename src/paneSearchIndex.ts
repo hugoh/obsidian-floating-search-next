@@ -14,7 +14,7 @@ import {
 } from "obsidian";
 import { strings } from "./i18n";
 import { isEmbeddedLeaf } from "./leafView";
-import { PaneSearchModal } from "./nativeModal";
+import { type Caret, PaneSearchModal } from "./nativeModal";
 import {
   DEFAULT_SETTINGS,
   type PaneSearchSettings,
@@ -58,9 +58,12 @@ export default class PaneSearchPlugin extends Plugin {
     await this.saveSettings();
   }, 1000);
 
+  private lastCaret: Caret | undefined;
+
   /** "With Last State" restores the last query only for this long. */
   private forgetQuery = debounce(() => {
     this.state = { ...this.state, query: "" };
+    this.lastCaret = undefined;
   }, 30000);
 
   async onload() {
@@ -141,19 +144,21 @@ export default class PaneSearchPlugin extends Plugin {
     };
   }
 
-  initModal(state: SearchState) {
+  initModal(state: SearchState, caret?: Caret) {
     this.ensurePatched();
     this.modal?.close();
 
     this.modal = new PaneSearchModal(
-      (closing) => {
+      (closing, closingCaret) => {
         this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
+        this.lastCaret = closingCaret;
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();
         this.forgetQuery();
       },
       this,
       state,
+      caret,
     );
     this.modal.open();
   }
@@ -337,7 +342,7 @@ export default class PaneSearchPlugin extends Plugin {
     this.addCommand({
       id: "search-obsidian-globally-state",
       name: strings().cmdSearchGloballyState,
-      callback: () => this.initModal(this.state),
+      callback: () => this.initModal(this.state, this.lastCaret),
     });
   }
 

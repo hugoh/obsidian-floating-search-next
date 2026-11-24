@@ -39,12 +39,13 @@ This plugin is much smaller than Floating Search: it only has the global search 
 
 1. **Two commands**:
     - `Search Obsidian Globally`: Searches all global content, and the characters entered will be cleared automatically after each search;
-    - `Search Obsidian Globally (With Last State)`: Searches all global content, and the characters entered will be cleared 30 seconds after each search;
+    - `Search Obsidian Globally (With Last State)`: Searches all global content. It reopens with the last query and the cursor where you left it, for 30 seconds after each search;
 2. **When the cursor is focused on the search input box**:
     - Use the up and down arrow keys to switch between search results;
     - When a search result is selected, hold the Shift key and press the up or down arrow keys to expand the results upwards or downwards; when focused on a file name, you can collapse the search results under the current file name;
     - When a search result is selected,
         - Press Enter to open the file and close the popup;
+        - Press Ctrl+Enter (Cmd+Enter on macOS) to open the file in a new tab and keep the popup open;
         - Press Ctrl+Shift+Alt+Enter to open the file in a new window and close the popup;
     - When a search result is selected, press Tab to preview the corresponding file in the current popup's right side, and Shift+Tab to close the preview;
     - When a search result is focused, press Ctrl+Shift+C to copy the selected search result content;
@@ -70,6 +71,7 @@ This plugin is much smaller than Floating Search: it only has the global search 
     - 当有一个搜索结果被选择时，按住 Shift 键再按上下方向键来向上展开或者向下展开结果；当聚焦在文件名上的时候，可以折叠当前文件名下的搜索结果；
     - 当有一个搜索结果被选择时，
         - 按 Enter 则是打开该文件且关闭弹窗；
+        - 按 Ctrl+Enter（macOS 上为 Cmd+Enter）则是在新标签页中打开该文件并保留弹窗；
         - 按 Ctrl+Shift+Alt+Enter 则是用新窗口打开该文件，且关闭弹窗；
     - 当有一个搜索结果被选择时，按 Tab 来在当前弹窗的右侧预览对应的文件，Shift+Tab 则是关闭预览；
     - 当有一个搜索结果被聚焦时，按 Ctrl+Shift+C 来复制选中的搜索结果内容；
