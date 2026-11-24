@@ -33,7 +33,6 @@ history, in that order. About 1,380 lines were counted:
 A line counts as "written here" when it is not found verbatim, so reformatting and
 renamed identifiers push the share up; treat the numbers as a rough guide, not an audit.
 
-
 ## Features and where they came from
 
 | Feature | Source | Notes |
