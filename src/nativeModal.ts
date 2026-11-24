@@ -28,26 +28,6 @@ function refocusWithoutSuggestions(inputEl: HTMLInputElement) {
   inputEl.focus();
 }
 
-function createInstructionElement(
-  parentEl: HTMLElement,
-  divCls: string,
-  keyText: string,
-  text: string,
-) {
-  const divEl = parentEl.createDiv({ cls: divCls });
-  const iconEl = divEl.createSpan({
-    cls: "search-open-modal-instructions-key",
-  });
-  const textEl = divEl.createSpan({
-    cls: "search-open-modal-instructions-text",
-  });
-
-  iconEl.setText(keyText);
-  textEl.setText(text);
-
-  return { divEl, iconEl, textEl };
-}
-
 /** Where the cursor and selection sat in the search box. */
 export interface Caret {
   start: number;
@@ -74,10 +54,8 @@ export class SearchOpenModal extends Modal {
   private fileState: PreviewState | undefined;
 
   private searchCtnEl: HTMLElement;
-  private instructionsEl: HTMLElement;
   private fileEl: HTMLElement;
 
-  private focusdItem: SearchResultItem | undefined;
   private closed = false;
   private readonly previews = new LatestQueue();
   private inputCleanup: (() => void) | null = null;
@@ -106,11 +84,9 @@ export class SearchOpenModal extends Modal {
     this.searchCtnEl = contentEl.createDiv({
       cls: "search-open-modal-search-ctn",
     });
-    this.instructionsEl = modalEl.createDiv({
-      cls: "search-open-modal-instructions",
-    });
-
-    this.initInstructions(this.instructionsEl);
+    this.initInstructions(
+      modalEl.createDiv({ cls: "search-open-modal-instructions" }),
+    );
     this.initCss(contentEl, modalEl, containerEl);
     await this.initSearchView(this.searchCtnEl);
     if (this.closed) {
@@ -131,8 +107,7 @@ export class SearchOpenModal extends Modal {
 
     if (this.searchLeaf) {
       const saved = this.searchLeaf.view.getState();
-      const inputEl = (this.searchLeaf.view as SearchView).searchComponent
-        ?.inputEl;
+      const inputEl = this.searchInput;
       this.cb(
         {
           ...saved,
@@ -152,53 +127,23 @@ export class SearchOpenModal extends Modal {
     contentEl.empty();
   }
 
-  initInstructions(instructionsEl: HTMLElement) {
-    if (!this.plugin.settings.showInstructions) {
-      return;
-    }
+  private initInstructions(instructionsEl: HTMLElement) {
+    if (!this.plugin.settings.showInstructions) return;
     const s = strings();
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-navigate",
-      "↑↓",
-      s.instrNavigate,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-collapse",
-      "Shift+↑↓",
-      s.instrCollapse,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-enter",
-      "↵",
-      s.instrOpenAndClose,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-mod-enter",
-      Platform.isMacOS ? "⌘↵" : "Ctrl+↵",
-      s.instrOpenNewTab,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-tab",
-      "Tab/Shift+Tab",
-      s.instrPreview,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-switch",
-      "Ctrl+G",
-      s.instrSwitchView,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-click",
-      "Alt+Click",
-      s.instrAltClick,
-    );
+    const hints: [key: string, text: string][] = [
+      ["↑↓", s.instrNavigate],
+      ["Shift+↑↓", s.instrCollapse],
+      ["↵", s.instrOpenAndClose],
+      [Platform.isMacOS ? "⌘↵" : "Ctrl+↵", s.instrOpenNewTab],
+      ["Tab/Shift+Tab", s.instrPreview],
+      ["Ctrl+G", s.instrSwitchView],
+      ["Alt+Click", s.instrAltClick],
+    ];
+    for (const [key, text] of hints) {
+      const hint = instructionsEl.createDiv();
+      hint.createSpan({ cls: "search-open-modal-instructions-key", text: key });
+      hint.createSpan({ cls: "search-open-modal-instructions-text", text });
+    }
   }
 
   initCss(
@@ -241,12 +186,12 @@ export class SearchOpenModal extends Modal {
   ) {
     if (this.closed) return;
     const view = this.searchLeaf.view as SearchView;
-    const typed = view.searchComponent?.inputEl?.value;
+    const typed = this.searchInput?.value;
     if (!typed || typed === initialQuery) {
       await view.setState(initialState, { history: false });
     }
     if (this.closed) return;
-    const inputEl = view.searchComponent?.inputEl;
+    const inputEl = this.searchInput;
     if (!inputEl) return;
     if (this.caret) {
       refocusWithoutSuggestions(inputEl);
@@ -260,9 +205,17 @@ export class SearchOpenModal extends Modal {
     }
   }
 
+  private get searchInput(): HTMLInputElement | undefined {
+    return (this.searchLeaf.view as SearchView).searchComponent?.inputEl;
+  }
+
+  private focusSearchInput() {
+    this.searchInput?.focus();
+  }
+
   initInput(retries = 10) {
     if (this.closed) return;
-    const inputEl = this.contentEl.getElementsByTagName("input")[0];
+    const inputEl = this.searchInput;
     if (!inputEl) {
       if (retries > 0) {
         window.setTimeout(() => this.initInput(retries - 1), 50);
@@ -296,11 +249,9 @@ export class SearchOpenModal extends Modal {
               if (currentView.dom.focusedItem.collapsible) {
                 currentView.dom.focusedItem.setCollapse(false);
               }
-              this.focusdItem = currentView.dom.focusedItem ?? undefined;
             }
           } else {
             currentView.onKeyArrowDownInFocus(e);
-            this.focusdItem = currentView.dom.focusedItem ?? undefined;
             this.debouncedAutoPreview();
           }
           break;
@@ -315,14 +266,9 @@ export class SearchOpenModal extends Modal {
               if (currentView.dom.focusedItem.collapseEl) {
                 currentView.dom.focusedItem.setCollapse(true);
               }
-              this.focusdItem = currentView.dom.focusedItem ?? undefined;
             }
           } else {
             currentView.onKeyArrowUpInFocus(e);
-            this.focusdItem = currentView.dom.focusedItem ?? undefined;
-            if (!currentView.dom.focusedItem?.content) {
-              this.focusdItem = undefined;
-            }
             this.debouncedAutoPreview();
           }
           break;
@@ -362,11 +308,7 @@ export class SearchOpenModal extends Modal {
               void this.fileLeaf.setViewState(estate, {
                 focus: true,
               });
-              window.setTimeout(() => {
-                (
-                  this.searchLeaf.view as SearchView
-                ).searchComponent?.inputEl?.focus();
-              }, 0);
+              window.setTimeout(() => this.focusSearchInput(), 0);
             }
           }
           break;
@@ -458,9 +400,7 @@ export class SearchOpenModal extends Modal {
             if (item.el !== targetElement) continue;
             currentView.dom.setFocusedItem(item);
             void this.initFileView(file, undefined);
-            (
-              this.searchLeaf.view as SearchView
-            ).searchComponent?.inputEl?.focus();
+            this.focusSearchInput();
             break;
           }
         }
@@ -472,7 +412,6 @@ export class SearchOpenModal extends Modal {
 
   private clearPreview() {
     this.previews.invalidate();
-    this.focusdItem = undefined;
     this.fileState = undefined;
     this.fileLeaf?.detach();
     this.fileEmbeddedView?.unload();
@@ -519,9 +458,7 @@ export class SearchOpenModal extends Modal {
         this.fileState = state;
         window.setTimeout(() => {
           if (this.closed || !isCurrent()) return;
-          (
-            this.searchLeaf.view as SearchView
-          ).searchComponent?.inputEl?.focus();
+          this.focusSearchInput();
         }, 0);
       }
 
@@ -539,18 +476,16 @@ export class SearchOpenModal extends Modal {
         e.preventDefault();
         e.stopPropagation();
 
-        (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+        this.focusSearchInput();
       }
 
       if (e.key === "Tab" && e.ctrlKey) {
         e.preventDefault();
         e.stopPropagation();
 
-        (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+        this.focusSearchInput();
       }
     };
-
-    if (!this.fileEl) return;
 
     const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, this.fileEl);
     this.fileLeaf = createdLeaf;
@@ -564,6 +499,6 @@ export class SearchOpenModal extends Modal {
     if (this.closed || !isCurrent()) return;
     this.fileState = state;
 
-    (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+    this.focusSearchInput();
   }
 }

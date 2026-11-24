@@ -14,7 +14,7 @@ type ConstructableWorkspaceSplit = new (
 
 export function isEmbeddedLeaf(leaf: WorkspaceLeaf) {
   if (!leaf) return false;
-  return leaf.containerEl.matches(".fs-block.fs-leaf-view .workspace-leaf");
+  return leaf.containerEl.matches(".search-open-embed .workspace-leaf");
 }
 
 function containerForDocument(doc: Document, plugin: SearchOpenPlugin) {
@@ -41,7 +41,7 @@ export function spawnLeafView(
  * root and container to resolve, so both point at the real workspace.
  */
 export class EmbeddedView extends Component {
-  readonly hoverEl: HTMLElement;
+  private readonly hoverEl: HTMLElement;
   private readonly containerEl: HTMLElement;
   private readonly rootSplit: WorkspaceSplit;
   private readonly document: Document;
@@ -56,20 +56,17 @@ export class EmbeddedView extends Component {
       plugin.app.workspace,
       "vertical",
     );
-    this.hoverEl = this.document.defaultView!.createDiv({
-      cls: "fs-block fs-leaf-view fs-popover-fill",
-    });
-    this.containerEl = this.hoverEl.createDiv("fs-content");
-    targetEl.appendChild(this.hoverEl);
+    this.hoverEl = targetEl.createDiv({ cls: "search-open-embed" });
+    this.containerEl = this.hoverEl.createDiv("search-open-embed-content");
     this.load();
   }
 
   attachLeaf(): WorkspaceLeaf {
     const { workspace } = this.plugin.app;
     this.rootSplit.getRoot = () =>
-      workspace[
-        this.document === window.document ? "rootSplit" : "floatingSplit"
-      ]!;
+      this.document === window.document
+        ? workspace.rootSplit
+        : (workspace.floatingSplit ?? workspace.rootSplit);
     this.rootSplit.getContainer = () =>
       containerForDocument(this.document, this.plugin);
     this.containerEl.appendChild(this.rootSplit.containerEl);

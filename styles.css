@@ -41,23 +41,24 @@ If your plugin does not need CSS, delete this file.
 	z-index: 40;
 }
 
-.fs-content .workspace-split.mod-vertical {
+.search-open-embed-content .workspace-split.mod-vertical {
 	height: 100%;
 }
 
-.fs-content {
+.search-open-embed-content {
 	height: 100%;
 }
 
-.fs-content .cm-scroller {
+.search-open-embed-content .cm-scroller {
 	margin-top: 20px;
 }
 
-.fs-block.fs-block {
+.search-open-embed.search-open-embed {
 	height: 100%;
+	width: 100%;
 }
 
-.fs-block .workspace-leaf-resize-handle {
+.search-open-embed .workspace-leaf-resize-handle {
 	display: none;
 }
 
@@ -96,7 +97,7 @@ If your plugin does not need CSS, delete this file.
 	background-color: var(--background-primary);
 }
 
-.fs-leaf-view .workspace-split {
+.search-open-embed .workspace-split {
 	background-color: var(--background-primary);
 }
 
@@ -124,14 +125,4 @@ If your plugin does not need CSS, delete this file.
 		border-right: none;
 		border-bottom: 1px solid var(--background-secondary);
 	}
-}
-
-.fs-popover-fill {
-  height: auto;
-  width: 100%;
-}
-
-.fs-popover-pdf {
-  height: 800px;
-  width: 600px;
 }

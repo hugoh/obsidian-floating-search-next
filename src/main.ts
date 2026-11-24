@@ -43,12 +43,6 @@ interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
 }
 
-/** Editor methods Obsidian's search addon calls but does not declare. */
-interface HighlightingEditor {
-  removeHighlights?: (...args: unknown[]) => void;
-  hasHighlight?: (...args: unknown[]) => boolean;
-}
-
 export default class SearchOpenPlugin extends Plugin {
   settings: SearchOpenSettings;
   private state: SearchState;
@@ -93,11 +87,11 @@ export default class SearchOpenPlugin extends Plugin {
   private patched = false;
   private ensurePatched() {
     if (this.patched) return;
-    this.patched = true;
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
     this.patchDragManager();
     this.patchEditorHighlights();
+    this.patched = true;
   }
 
   // Obsidian's search addon calls removeHighlights()/hasHighlight() on every
@@ -124,7 +118,7 @@ export default class SearchOpenPlugin extends Plugin {
             throw e;
           }
         };
-    const proto = Editor.prototype as unknown as HighlightingEditor;
+    const proto = Editor.prototype;
     this.register(
       around(proto, {
         ...(proto.removeHighlights && {
@@ -175,18 +169,15 @@ export default class SearchOpenPlugin extends Plugin {
       getLeaf: (next) =>
         function (this: Workspace, ...args: Parameters<Workspace["getLeaf"]>) {
           const activeLeaf = self.app.workspace.getActiveViewOfType(View)?.leaf;
-          if (activeLeaf?.parent) {
-            const fsCtnEl = activeLeaf.parent.containerEl.parentElement;
-            if (fsCtnEl?.hasClass("fs-content")) {
-              if (activeLeaf.view.getViewType() === "markdown") {
-                return activeLeaf;
-              }
+          if (activeLeaf && isEmbeddedLeaf(activeLeaf)) {
+            if (activeLeaf.view.getViewType() === "markdown") {
+              return activeLeaf;
+            }
 
-              const newLeaf = self.app.workspace.getMostRecentLeaf();
+            const newLeaf = self.app.workspace.getMostRecentLeaf();
 
-              if (newLeaf) {
-                this.setActiveLeaf(newLeaf, {});
-              }
+            if (newLeaf) {
+              this.setActiveLeaf(newLeaf, {});
             }
           }
           return next.apply(this, args);
@@ -275,9 +266,7 @@ export default class SearchOpenPlugin extends Plugin {
 
             const view = old.call(this, file, openState);
             window.setTimeout(() => {
-              const fsCtnEl = this.parent?.containerEl?.parentElement;
-              if (!fsCtnEl?.classList.contains("fs-content")) return;
-              if (file.extension !== "canvas") return;
+              if (!isEmbeddedLeaf(this) || file.extension !== "canvas") return;
 
               const canvas = (this.view as CanvasLeafView).canvas;
               const wanted = (
