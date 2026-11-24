@@ -143,12 +143,6 @@ export class PaneSearchModal extends Modal {
       instructionsEl,
       "pane-search-modal-instructions-enter",
       "↵",
-      s.instrOpenBackground,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "pane-search-modal-instructions-alt-enter",
-      "Alt+↵",
       s.instrOpenAndClose,
     );
     createInstructionElement(
@@ -295,9 +289,7 @@ export class PaneSearchModal extends Modal {
           break;
         case "Enter":
           currentView.onKeyEnterInFocus(e);
-          if (e.altKey && currentView.dom.focusedItem) {
-            this.close();
-          }
+          if (currentView.dom.focusedItem) this.close();
           break;
         case "Tab":
           e.preventDefault();

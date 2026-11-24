@@ -32,7 +32,6 @@ export interface Strings {
   cmdSearchGloballyState: string;
   instrNavigate: string;
   instrCollapse: string;
-  instrOpenBackground: string;
   instrOpenAndClose: string;
   instrPreview: string;
   instrSwitchView: string;
@@ -49,7 +48,6 @@ const EN: Strings = {
   cmdSearchGloballyState: "Search Obsidian Globally (With Last State)",
   instrNavigate: "Navigate",
   instrCollapse: "Collapse/Expand",
-  instrOpenBackground: "Open in background",
   instrOpenAndClose: "Open File and Close",
   instrPreview: "Preview/Close Preview",
   instrSwitchView: "Switch Between Search and File View",
@@ -65,7 +63,6 @@ const ZH: Strings = {
   cmdSearchGloballyState: "全局搜索（保留上次关键字）",
   instrNavigate: "切换结果",
   instrCollapse: "折叠/展开",
-  instrOpenBackground: "后台打开",
   instrOpenAndClose: "打开并关闭弹窗",
   instrPreview: "预览/关闭预览",
   instrSwitchView: "在搜索和预览间切换",

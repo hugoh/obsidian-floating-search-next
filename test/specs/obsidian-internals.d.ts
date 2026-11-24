@@ -7,7 +7,12 @@ export interface TestPlugin {
   };
   modal: {
     close(): void;
-    searchLeaf: { view: { setSortOrder(order: string): void } };
+    searchLeaf: {
+      view: {
+        setSortOrder(order: string): void;
+        getState(): { sortOrder?: string };
+      };
+    };
   };
   applySettingsUpdate(): void;
   loadData(): Promise<Record<string, unknown> | null>;

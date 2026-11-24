@@ -1,6 +1,23 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_SETTINGS, sanitizeSettings } from "./settings";
 
+describe("sort order", () => {
+  test("defaults to relevance", () => {
+    expect(DEFAULT_SETTINGS.searchViewState.sortOrder).toBe("byRelevance");
+    expect(sanitizeSettings({}).searchViewState.sortOrder).toBe("byRelevance");
+  });
+
+  test.each(["byRelevance", "alphabetical", "byModifiedTimeReverse"])(
+    "keeps a saved %s",
+    (sortOrder) => {
+      expect(
+        sanitizeSettings({ searchViewState: { sortOrder } }).searchViewState
+          .sortOrder,
+      ).toBe(sortOrder);
+    },
+  );
+});
+
 describe("sanitizeSettings", () => {
   test.each([[null], [undefined], [42], ["text"], [[]]])(
     "falls back to the defaults for %p",

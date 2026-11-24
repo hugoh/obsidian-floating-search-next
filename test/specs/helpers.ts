@@ -36,3 +36,16 @@ export async function waitForVaultIndexed() {
 export async function closeModals() {
   await browser.keys("Escape");
 }
+
+export async function resetPlugin() {
+  await browser.executeObsidian(async ({ app }, id) => {
+    await app.plugins.disablePlugin(id);
+    // Unloading saves pending settings, so wipe them only afterwards.
+    await app.vault.adapter.write(
+      `${app.vault.configDir}/plugins/${id}/data.json`,
+      "{}",
+    );
+    await app.plugins.enablePlugin(id);
+  }, PLUGIN_ID);
+  await waitForPlugin();
+}

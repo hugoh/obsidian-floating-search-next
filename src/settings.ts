@@ -1,4 +1,5 @@
 export type SortOrder =
+  | "byRelevance"
   | "alphabetical"
   | "alphabeticalReverse"
   | "byModifiedTime"
@@ -21,6 +22,7 @@ export interface PaneSearchSettings {
 }
 
 const SORT_ORDERS: readonly SortOrder[] = [
+  "byRelevance",
   "alphabetical",
   "alphabeticalReverse",
   "byModifiedTime",
@@ -36,7 +38,7 @@ export const DEFAULT_SETTINGS: PaneSearchSettings = {
     extraContext: false,
     matchingCase: false,
     query: "",
-    sortOrder: "alphabetical",
+    sortOrder: "byRelevance",
   },
   showInstructions: true,
 };
@@ -67,7 +69,7 @@ function sanitizeViewState(raw: unknown): SearchState {
     sortOrder: oneOf(
       state.sortOrder,
       SORT_ORDERS,
-      defaults.sortOrder ?? "alphabetical",
+      defaults.sortOrder ?? "byRelevance",
     ),
   };
 }

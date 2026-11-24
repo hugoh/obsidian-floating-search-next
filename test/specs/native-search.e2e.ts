@@ -1,6 +1,6 @@
 import { browser, expect } from "@wdio/globals";
 import { afterEach, describe, it } from "mocha";
-import { closeModals, PLUGIN_ID, waitForPlugin } from "./helpers";
+import { closeModals, PLUGIN_ID, resetPlugin, waitForPlugin } from "./helpers";
 
 const TITLES = ".pane-search-modal .search-result-file-title";
 
@@ -14,6 +14,7 @@ async function waitForResults() {
 describe("Pane native search", () => {
   afterEach(async () => {
     await closeModals();
+    await resetPlugin();
   });
 
   async function searchFor(query: string) {
@@ -82,5 +83,39 @@ describe("Pane native search", () => {
       PLUGIN_ID,
     );
     expect(sortOrder).toBe("byModifiedTime");
+  });
+
+  it("sorts by relevance by default", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
+    );
+    await browser
+      .$(".pane-search-modal .search-input-container input")
+      .waitForExist();
+    const sortOrder = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].modal.searchLeaf.view.getState().sortOrder,
+      PLUGIN_ID,
+    );
+    expect(sortOrder).toBe("byRelevance");
+  });
+
+  it("opens the focused result and closes the modal on Enter", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    await browser.pause(300);
+    await browser.keys(["Enter"]);
+    await browser.waitUntil(
+      async () =>
+        (await browser.executeObsidian(
+          ({ app }) => app.workspace.getActiveFile()?.basename,
+        )) === "Pineapple",
+      { timeoutMsg: "Enter did not open the Pineapple note" },
+    );
+    await browser
+      .$(".pane-search-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
   });
 });
