@@ -1,9 +1,9 @@
 {
-  "id": "pane-search",
-  "name": "Pane Search",
+  "id": "search-open",
+  "name": "Search & Open",
   "version": "0.1.3",
-  "minAppVersion": "1.13.0",
-  "description": "Search in a floating modal, split, tab or window, with a quick switcher, filters and saved searches. A fork of Floating Search by Boninall.",
+  "minAppVersion": "1.15.1",
+  "description": "Search your vault and open the match, with a preview pane. A simplified fork of Floating Search by Boninall.",
   "author": "Hugo Haas",
   "authorUrl": "https://github.com/hugoh",
   "isDesktopOnly": false

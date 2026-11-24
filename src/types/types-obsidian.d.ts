@@ -1,7 +1,6 @@
 import "obsidian";
 import {
   EditorPosition,
-  Loc,
   MarkdownPreviewRenderer,
   MarkdownSubView,
   PluginManifest,
@@ -11,7 +10,6 @@ import {
   View,
   WorkspaceLeaf,
 } from "obsidian";
-import { EmbeddedViewParent } from "../leafView";
 
 interface InternalPlugins {
   switcher: QuickSwitcherPlugin;
@@ -127,7 +125,6 @@ declare module "obsidian" {
     matches?: unknown[];
     collapsible?: boolean;
     collapseEl?: HTMLElement;
-    pathEl?: HTMLElement;
     setCollapse(collapse: boolean): void;
   }
 
@@ -135,12 +132,6 @@ declare module "obsidian" {
     focusedItem: SearchResultItem | null;
     setFocusedItem(item: SearchResultItem | null | undefined): void;
     resultDomLookup: Map<TFile, SearchResultItem>;
-    vChildren?: {
-      children?: SearchResultItem[];
-      _children?: SearchResultItem[];
-    };
-    children?: SearchResultItem[];
-    stopLoader(): void;
   }
 
   interface ViewRegistry {
@@ -162,10 +153,6 @@ declare module "obsidian" {
     containerEl: HTMLElement;
     children: WorkspaceItem[];
     parent: WorkspaceParent | null;
-  }
-
-  interface MarkdownEditView {
-    editorEl: HTMLElement;
   }
 
   class MarkdownPreviewRendererStatic extends MarkdownPreviewRenderer {
@@ -276,9 +263,6 @@ declare module "obsidian" {
     searchComponent: SearchComponent;
     filterSectionToggleEl: HTMLElement;
     searchParamsContainerEl: HTMLElement;
-    hidePathToggle?: Setting;
-    showInstructionsToggle?: Setting;
-    defaultViewTypeDropdown?: Setting;
     infoEl?: HTMLElement;
     startSearch(): void;
     stopSearch?(): void;
@@ -294,13 +278,6 @@ declare module "obsidian" {
     createNewMarkdownFile(folder: TFolder, fileName: string): Promise<TFile>;
   }
 
-  enum PopoverState {
-    Showing,
-    Shown,
-    Hiding,
-    Hidden,
-  }
-
   interface Menu {
     items: MenuItem[];
     dom: HTMLElement;
@@ -312,47 +289,8 @@ declare module "obsidian" {
     dom: HTMLElement;
   }
 
-  interface EphemeralState {
-    focus?: boolean;
-    subpath?: string;
-    line?: number;
-    startLoc?: Loc;
-    endLoc?: Loc;
-    scroll?: number;
-  }
-
-  interface HoverParent {
-    type?: string;
-  }
-
   interface WorkspaceContainer {
     type: "window" | "split" | "tab";
-  }
-
-  interface HoverPopover {
-    parent: EmbeddedViewParent | null;
-    targetEl: HTMLElement;
-    hoverEl: HTMLElement;
-
-    position(pos?: MousePos): void;
-
-    hide(): void;
-
-    show(): void;
-
-    shouldShowSelf(): boolean;
-
-    timer: number;
-    waitTime: number;
-
-    shouldShow(): boolean;
-
-    transition(): void;
-  }
-
-  interface MousePos {
-    x: number;
-    y: number;
   }
 
   interface Plugin {

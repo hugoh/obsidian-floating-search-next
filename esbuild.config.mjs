@@ -16,7 +16,7 @@ const context = await esbuild.context({
         js: banner,
     },
     minify: true,
-    entryPoints: ['src/paneSearchIndex.ts'],
+    entryPoints: ['src/main.ts'],
     bundle: true,
     external: [
         'obsidian',

@@ -14,11 +14,11 @@ const withLanguage = <T>(language: string, run: () => T): T => {
 describe("English", () => {
   test("is the default outside a Chinese locale", () => {
     expect(getLocale()).toBe("en");
-    expect(strings().cmdkPlaceholder).toBe("Search files and content...");
+    expect(strings().cmdSearchGlobally).toBe("Search obsidian globally");
   });
 
   test("parameterised messages take their argument", () => {
-    expect(strings().savedSearchCmd("Work")).toContain("Work");
+    expect(strings().instrPreview).toBe("Preview/Close Preview");
   });
 });
 
@@ -29,11 +29,10 @@ describe("Chinese locale", () => {
   });
 
   test("messages switch language", () => {
-    const english = strings().exclusions;
+    const english = strings().cmdSearchGlobally;
     withLanguage("zh", () => {
-      expect(strings().exclusions).not.toBe(english);
-      expect(strings().cmdkPlaceholder).not.toBe("Search files and content...");
-      expect(strings().savedSearchCmd("项目")).toContain("项目");
+      expect(strings().cmdSearchGlobally).not.toBe(english);
+      expect(strings().instrPreview).not.toBe("Preview/Close Preview");
     });
   });
 

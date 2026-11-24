@@ -15,6 +15,7 @@ bun install
 bun run dev        # rebuild main.js on change
 bun run test       # unit tests (bun) and regression tests (node)
 bun run test:e2e   # builds, then runs the plugin in a real Obsidian
+bun run screenshot # retakes media/screenshot.png for the README
 bun run lint       # eslint-plugin-obsidianmd, the rules the plugin review applies
 bun run typecheck  # plugin, unit tests and e2e specs
 bun run build      # typecheck + production bundle
@@ -23,9 +24,9 @@ hk check --all     # everything CI runs
 
 `test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored) and uses
 [wdio-obsidian-service](https://github.com/jesse-r-s-hines/wdio-obsidian-service).
-By default it tests the latest release; CI also runs Obsidian 1.5.12, the
+By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
-example `"1.5.12/earliest latest/latest"`) to test others.
+example `"1.15.1/earliest latest/latest"`) to test others.
 
 ## Adding a language
 
@@ -35,7 +36,7 @@ Plugin text lives in `src/i18n.ts`, in one typed object per language. English
 
 1. Copy the `EN` block, rename it (for example `JA`) and translate every message.
    Leave key labels such as `Shift+↑↓` alone. Messages that are functions (for
-   example `savedSearchCmd`) keep their arguments.
+   example a message that includes a name) keep their arguments.
 2. Add the language to the `Locale` type and to `TRANSLATIONS`, and teach
    `resolveLocale` its Obsidian language code (`ja`, `fr`, ...). Obsidian reports
    Simplified Chinese as `zh` and Traditional as `zh-TW`.

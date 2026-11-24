@@ -2,23 +2,31 @@ import {
   debounce,
   Keymap,
   Modal,
+  Platform,
   type SearchResultItem,
   type SearchView,
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
-import {
-  applyNativeResultFilters,
-  bindNativeRegexSearch,
-  mountFilterBar,
-  watchNativeSearchResults,
-} from "./filterBar";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
-import type PaneSearchPlugin from "./paneSearchIndex";
-import { noteNameFromText } from "./quickCreate";
+import type SearchOpenPlugin from "./main";
 import type { SearchState } from "./settings";
+
+/**
+ * Obsidian opens its search-operator menu whenever the input gains focus.
+ * Focus the input again with that one handler skipped, so a restored query
+ * does not come back with the menu open.
+ */
+function refocusWithoutSuggestions(inputEl: HTMLInputElement) {
+  inputEl.addEventListener("focus", (e) => e.stopImmediatePropagation(), {
+    capture: true,
+    once: true,
+  });
+  inputEl.blur();
+  inputEl.focus();
+}
 
 function createInstructionElement(
   parentEl: HTMLElement,
@@ -28,10 +36,10 @@ function createInstructionElement(
 ) {
   const divEl = parentEl.createDiv({ cls: divCls });
   const iconEl = divEl.createSpan({
-    cls: "pane-search-modal-instructions-key",
+    cls: "search-open-modal-instructions-key",
   });
   const textEl = divEl.createSpan({
-    cls: "pane-search-modal-instructions-text",
+    cls: "search-open-modal-instructions-text",
   });
 
   iconEl.setText(keyText);
@@ -40,30 +48,34 @@ function createInstructionElement(
   return { divEl, iconEl, textEl };
 }
 
+/** Where the cursor and selection sat in the search box. */
+export interface Caret {
+  start: number;
+  end: number;
+}
+
 /** Where the preview should land: the matched text inside a result row. */
 export interface PreviewState extends Record<string, unknown> {
   match?: { content?: string; matches?: unknown[] };
 }
 
-export class PaneSearchModal extends Modal {
-  private readonly plugin: PaneSearchPlugin;
+export class SearchOpenModal extends Modal {
+  private readonly plugin: SearchOpenPlugin;
   private searchEmbeddedView: EmbeddedView;
   private fileEmbeddedView: EmbeddedView | undefined;
 
   searchLeaf: WorkspaceLeaf;
   fileLeaf: WorkspaceLeaf | undefined;
 
-  private cb: (state: SearchState) => void;
+  private cb: (state: SearchState, caret: Caret) => void;
   private state: SearchState;
+  private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
 
   private searchCtnEl: HTMLElement;
-  private unwatchFilters: (() => void) | null = null;
-  private unbindNativeQuery: (() => void) | null = null;
   private instructionsEl: HTMLElement;
   private fileEl: HTMLElement;
-  private viewType: string;
 
   private focusdItem: SearchResultItem | undefined;
   private closed = false;
@@ -75,16 +87,16 @@ export class PaneSearchModal extends Modal {
   }, 150);
 
   constructor(
-    cb: (state: SearchState) => void,
-    plugin: PaneSearchPlugin,
+    cb: (state: SearchState, caret: Caret) => void,
+    plugin: SearchOpenPlugin,
     state: SearchState,
-    viewType = "search",
+    caret?: Caret,
   ) {
     super(plugin.app);
     this.plugin = plugin;
     this.cb = cb;
     this.state = state;
-    this.viewType = viewType;
+    this.caret = caret;
   }
 
   async onOpen() {
@@ -92,10 +104,10 @@ export class PaneSearchModal extends Modal {
     const { contentEl, containerEl, modalEl } = this;
 
     this.searchCtnEl = contentEl.createDiv({
-      cls: "pane-search-modal-search-ctn",
+      cls: "search-open-modal-search-ctn",
     });
     this.instructionsEl = modalEl.createDiv({
-      cls: "pane-search-modal-instructions",
+      cls: "search-open-modal-instructions",
     });
 
     this.initInstructions(this.instructionsEl);
@@ -105,7 +117,6 @@ export class PaneSearchModal extends Modal {
       this.searchLeaf?.detach();
       return;
     }
-    this.initFilterBar();
     this.initInput();
     this.initContent();
   }
@@ -117,19 +128,21 @@ export class PaneSearchModal extends Modal {
     this.inputCleanup = null;
     this.clearPreview();
     const { contentEl } = this;
-    this.unwatchFilters?.();
-    this.unwatchFilters = null;
-    this.unbindNativeQuery?.();
-    this.unbindNativeQuery = null;
 
     if (this.searchLeaf) {
       const saved = this.searchLeaf.view.getState();
-      this.cb({
-        ...saved,
-        query: this.plugin.stripExclusion(
-          typeof saved.query === "string" ? saved.query : "",
-        ),
-      });
+      const inputEl = (this.searchLeaf.view as SearchView).searchComponent
+        ?.inputEl;
+      this.cb(
+        {
+          ...saved,
+          query: typeof saved.query === "string" ? saved.query : "",
+        },
+        {
+          start: inputEl?.selectionStart ?? 0,
+          end: inputEl?.selectionEnd ?? 0,
+        },
+      );
     }
 
     this.searchLeaf?.detach();
@@ -146,49 +159,43 @@ export class PaneSearchModal extends Modal {
     const s = strings();
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-navigate",
+      "search-open-modal-instructions-navigate",
       "↑↓",
       s.instrNavigate,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-collapse",
+      "search-open-modal-instructions-collapse",
       "Shift+↑↓",
       s.instrCollapse,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-enter",
+      "search-open-modal-instructions-enter",
       "↵",
-      s.instrOpenBackground,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "pane-search-modal-instructions-alt-enter",
-      "Alt+↵",
       s.instrOpenAndClose,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-ctrl-enter",
-      "Ctrl+↵",
-      s.instrCreateIfMissing,
+      "search-open-modal-instructions-mod-enter",
+      Platform.isMacOS ? "⌘↵" : "Ctrl+↵",
+      s.instrOpenNewTab,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-tab",
+      "search-open-modal-instructions-tab",
       "Tab/Shift+Tab",
       s.instrPreview,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-switch",
+      "search-open-modal-instructions-switch",
       "Ctrl+G",
       s.instrSwitchView,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-click",
+      "search-open-modal-instructions-click",
       "Alt+Click",
       s.instrAltClick,
     );
@@ -199,9 +206,9 @@ export class PaneSearchModal extends Modal {
     modalEl: HTMLElement,
     containerEl: HTMLElement,
   ) {
-    contentEl.classList.add("pane-search-modal-content");
-    modalEl.classList.add("pane-search-modal");
-    containerEl.classList.add("pane-search-modal-container");
+    contentEl.classList.add("search-open-modal-content");
+    modalEl.classList.add("search-open-modal");
+    containerEl.classList.add("search-open-modal-container");
   }
 
   async initSearchView(contentEl: HTMLElement) {
@@ -210,15 +217,11 @@ export class PaneSearchModal extends Modal {
     this.searchEmbeddedView = embeddedView;
 
     this.searchLeaf.setPinned(true);
-    const initialQuery = this.plugin.withExclusion(this.state.query ?? "");
-    const initialState = {
-      ...this.state,
-      query: initialQuery,
-      matchingCase: this.plugin.settings.filterMatchCase,
-    };
+    const initialQuery = this.state.query ?? "";
+    const initialState = { ...this.state, query: initialQuery };
     await this.searchLeaf.setViewState({
       type: "search",
-      state: { ...initialState, triggerBySelf: true },
+      state: initialState,
     });
 
     window.setTimeout(
@@ -229,7 +232,8 @@ export class PaneSearchModal extends Modal {
 
   /**
    * The view re-applies the saved state once it has settled, but never over
-   * text the user already typed; then the caret goes where the query ends.
+   * text the user already typed. The query is then selected, or, when
+   * reopening with the last state, the cursor goes back where it was.
    */
   private async settleInitialState(
     initialState: SearchState,
@@ -239,63 +243,20 @@ export class PaneSearchModal extends Modal {
     const view = this.searchLeaf.view as SearchView;
     const typed = view.searchComponent?.inputEl?.value;
     if (!typed || typed === initialQuery) {
-      await view.setState(
-        { ...initialState, triggerBySelf: true },
-        { history: false },
-      );
+      await view.setState(initialState, { history: false });
     }
     if (this.closed) return;
     const inputEl = view.searchComponent?.inputEl;
-    if (inputEl) {
-      if (this.state.current) inputEl.setSelectionRange(0, 0);
-      else inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
-    }
-  }
-
-  private initFilterBar() {
-    const searchRow = this.searchCtnEl.querySelector(".search-row");
-    if (searchRow) {
-      mountFilterBar(searchRow as HTMLElement, this.plugin, () =>
-        this.onFilterChange(),
+    if (!inputEl) return;
+    if (this.caret) {
+      refocusWithoutSuggestions(inputEl);
+      const length = inputEl.value.length;
+      inputEl.setSelectionRange(
+        Math.min(this.caret.start, length),
+        Math.min(this.caret.end, length),
       );
-    }
-    const view = this.searchLeaf.view as SearchView;
-    this.unbindNativeQuery = bindNativeRegexSearch(view, this.plugin, () => {
-      this.debouncedAutoPreview.cancel();
-      this.clearPreview();
-    });
-    this.syncNativeMatchCase(view);
-    (view as SearchView & { startSearch?: () => void }).startSearch?.();
-    this.unwatchFilters = watchNativeSearchResults(view, this.plugin);
-  }
-
-  private onFilterChange() {
-    this.clearPreview();
-    const view = this.searchLeaf.view as SearchView;
-    this.syncNativeMatchCase(view);
-    (view as SearchView & { startSearch?: () => void }).startSearch?.();
-    applyNativeResultFilters(view, this.plugin);
-  }
-
-  private syncNativeMatchCase(view: SearchView) {
-    const state = view.getState();
-    if (state.matchingCase === this.plugin.settings.filterMatchCase) return;
-    const target = view as SearchView & {
-      setMatchingCase?: (value: boolean) => void;
-    };
-    if (typeof target.setMatchingCase === "function") {
-      target.setMatchingCase(this.plugin.settings.filterMatchCase);
-      return;
-    }
-    if (state.matchingCase !== this.plugin.settings.filterMatchCase) {
-      void view.setState(
-        {
-          ...state,
-          matchingCase: this.plugin.settings.filterMatchCase,
-          triggerBySelf: true,
-        },
-        { history: false },
-      );
+    } else {
+      inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
     }
   }
 
@@ -372,23 +333,8 @@ export class PaneSearchModal extends Modal {
           currentView.onKeyArrowRightInFocus(e);
           break;
         case "Enter":
-          if (
-            Keymap.isModifier(e, "Mod") &&
-            Keymap.isModifier(e, "Shift") &&
-            !this.focusdItem
-          ) {
-            e.preventDefault();
-            const name = noteNameFromText(
-              this.plugin.stripExclusion(inputEl.value),
-            );
-            if (name) {
-              void this.plugin.app.workspace.openLinkText(name, "", true);
-              this.close();
-            }
-            break;
-          }
           currentView.onKeyEnterInFocus(e);
-          if (e.altKey && currentView.dom.focusedItem) {
+          if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
             this.close();
           }
           break;
@@ -399,7 +345,7 @@ export class PaneSearchModal extends Modal {
               this.fileLeaf?.detach();
               this.fileLeaf = undefined;
               this.fileEmbeddedView?.unload();
-              this.modalEl.toggleClass("pane-search-width", false);
+              this.modalEl.toggleClass("search-open-width", false);
               this.fileEl.detach();
 
               break;
@@ -548,7 +494,7 @@ export class PaneSearchModal extends Modal {
     this.fileLeaf = undefined;
     this.fileEmbeddedView = undefined;
     this.fileEl?.remove();
-    this.modalEl.removeClass("pane-search-width");
+    this.modalEl.removeClass("search-open-width");
   }
 
   async initFileView(file: TFile, state: PreviewState | undefined) {
@@ -598,10 +544,10 @@ export class PaneSearchModal extends Modal {
 
     const { contentEl } = this;
     this.fileEl = contentEl.createDiv({
-      cls: "pane-search-modal-file-ctn",
+      cls: "search-open-modal-file-ctn",
     });
     contentEl.addClass("has-file-ctn");
-    this.modalEl.toggleClass("pane-search-width", true);
+    this.modalEl.toggleClass("search-open-width", true);
     this.fileEl.onkeydown = (e) => {
       if (e.ctrlKey && e.key === "g") {
         e.preventDefault();

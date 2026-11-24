@@ -1,13 +1,8 @@
 import { browser, expect } from "@wdio/globals";
 import { afterEach, describe, it } from "mocha";
-import {
-  closeModals,
-  PLUGIN_ID,
-  updateSettings,
-  waitForPlugin,
-} from "./helpers";
+import { closeModals, PLUGIN_ID, resetPlugin, waitForPlugin } from "./helpers";
 
-const TITLES = ".pane-search-modal .search-result-file-title";
+const TITLES = ".search-open-modal .search-result-file-title";
 
 async function waitForResults() {
   await browser.waitUntil(async () => (await browser.$$(TITLES)).length > 0, {
@@ -16,31 +11,10 @@ async function waitForResults() {
   });
 }
 
-const SEARCH_INPUT = ".pane-search-modal .search-input-container input";
-
-async function nativeTitles(): Promise<string[]> {
-  return browser.execute(
-    (selector) =>
-      Array.from(
-        document.querySelectorAll<HTMLElement>(selector),
-        (el) => el.innerText.split("\n")[0] ?? "",
-      ),
-    TITLES,
-  );
-}
-
-async function nudgeSearch() {
-  await browser.execute((selector) => {
-    document
-      .querySelector<HTMLInputElement>(selector)
-      ?.dispatchEvent(new Event("input", { bubbles: true }));
-  }, SEARCH_INPUT);
-}
-
 describe("Pane native search", () => {
   afterEach(async () => {
     await closeModals();
-    await updateSettings({ excludeFolders: [], excludeFiles: [] });
+    await resetPlugin();
   });
 
   async function searchFor(query: string) {
@@ -48,12 +22,11 @@ describe("Pane native search", () => {
     await browser.executeObsidianCommand(
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
-    const input = browser.$(".pane-search-modal .search-input-container input");
+    const input = browser.$(".search-open-modal .search-input-container input");
     await input.waitForExist();
     await browser.waitUntil(() => input.isFocused(), {
       timeoutMsg: "the search input never received focus",
     });
-    // Type into the focused field, like a user, so the injected exclusion clause survives.
     await browser.keys(query.split(""));
   }
 
@@ -64,17 +37,10 @@ describe("Pane native search", () => {
     expect(titles.length).toBeGreaterThan(1);
   });
 
-  it("keeps text typed into an empty search separate from the exclusion clause", async () => {
-    await updateSettings({ excludeFolders: ["Archive"] });
-    await searchFor("pineapple");
-    const input = browser.$(".pane-search-modal .search-input-container input");
-    expect(await input.getValue()).toBe("pineapple -path:/^Archive\\//");
-  });
-
   it("does not write the search text to disk", async () => {
     await searchFor("topsecretneedle");
-    await closeModals();
     await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.close();
       app.plugins.plugins[id].applySettingsUpdate();
     }, PLUGIN_ID);
     await browser.pause(1800);
@@ -86,39 +52,179 @@ describe("Pane native search", () => {
     expect(saved).not.toContain("topsecretneedle");
   });
 
-  it("names a note from the search text without link characters (Mod+Shift+Enter)", async () => {
-    await searchFor("my#idea^x");
-    // "Mod" is Cmd on macOS and Ctrl elsewhere.
-    await browser.keys([
-      process.platform === "darwin" ? "Meta" : "Control",
-      "Shift",
-      "Enter",
-    ]);
-    await browser.waitUntil(
-      async () =>
-        browser.executeObsidian(
-          ({ app }) => app.workspace.getActiveFile()?.path === "my-idea-x.md",
-        ),
-      { timeoutMsg: "the note my-idea-x.md was not opened" },
-    );
+  it("previews the focused result beside the search", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown", "Tab"]);
+    await browser
+      .$(".search-open-modal .search-open-modal-file-ctn")
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
   });
 
-  it("applies exclusion rules to the native search", async () => {
-    await updateSettings({ excludeFolders: ["Archive"] });
-    await searchFor("pineapple");
-    let texts: string[] = [];
-    // The list re-renders as results stream in, so read it in one atomic DOM pass.
-    // If the first search came back empty, nudge it with another input event.
-    await browser.waitUntil(
-      async () => {
-        texts = await nativeTitles();
-        if (texts.length === 0) await nudgeSearch();
-        return texts.includes("Pineapple");
-      },
-      {
-        timeoutMsg: `the native search never listed Pineapple; saw ${JSON.stringify(texts)} for input ${JSON.stringify(await browser.$(".pane-search-modal .search-input-container input").getValue())}`,
-      },
+  it("remembers the sort order chosen in the modal", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
     );
-    expect(texts).not.toContain("Old");
+    await browser
+      .$(".search-open-modal .search-input-container input")
+      .waitForExist();
+    await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.searchLeaf.view.setSortOrder(
+        "byModifiedTime",
+      );
+    }, PLUGIN_ID);
+    await browser.executeObsidian(({ app }, id) => {
+      app.plugins.plugins[id].modal.close();
+    }, PLUGIN_ID);
+    const sortOrder = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].settings.searchViewState.sortOrder,
+      PLUGIN_ID,
+    );
+    expect(sortOrder).toBe("byModifiedTime");
+  });
+
+  it("sorts by relevance by default", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
+    );
+    await browser
+      .$(".search-open-modal .search-input-container input")
+      .waitForExist();
+    const sortOrder = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].modal.searchLeaf.view.getState().sortOrder,
+      PLUGIN_ID,
+    );
+    expect(sortOrder).toBe("byRelevance");
+  });
+
+  it("opens the focused result and closes the modal on Enter", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    await browser.pause(300);
+    const focusedPath = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
+          ?.path,
+      PLUGIN_ID,
+    );
+    expect(focusedPath).toBeDefined();
+    await browser.keys(["Enter"]);
+    await browser.waitUntil(
+      async () =>
+        (await browser.executeObsidian(
+          ({ app }) => app.workspace.getActiveFile()?.path,
+        )) === focusedPath,
+      { timeoutMsg: `Enter did not open ${focusedPath}` },
+    );
+    await browser
+      .$(".search-open-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+  });
+
+  it("opens the focused result in a new tab on Mod+Enter", async () => {
+    await waitForPlugin();
+    await browser.executeObsidian(async ({ app }) => {
+      await app.workspace.openLinkText("Other", "", false);
+    });
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    await browser.pause(300);
+    const before = await browser.executeObsidian(
+      ({ app }) => app.workspace.getLeavesOfType("markdown").length,
+    );
+    await browser.execute((selector) => {
+      document.querySelector<HTMLInputElement>(selector)?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }, ".search-open-modal .search-input-container input");
+    await browser.waitUntil(
+      async () =>
+        (await browser.executeObsidian(
+          ({ app }) => app.workspace.getLeavesOfType("markdown").length,
+        )) > before,
+      { timeoutMsg: "Mod+Enter did not open a new tab" },
+    );
+    expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
+  });
+
+  describe("reopening with the last state", () => {
+    const INPUT = ".search-open-modal .search-input-container input";
+
+    async function reopenWithCaret(query: string, start: number, end: number) {
+      await waitForPlugin();
+      await browser.executeObsidian(
+        ({ app }, id, q) => {
+          const plugin = app.plugins.plugins[id];
+          plugin.initModal({ ...plugin.state, query: q });
+        },
+        PLUGIN_ID,
+        query,
+      );
+      const input = browser.$(INPUT);
+      await input.waitForExist();
+      await browser.execute(
+        (selector, a, b) => {
+          const el = document.querySelector<HTMLInputElement>(selector);
+          el?.focus();
+          el?.setSelectionRange(a, b);
+        },
+        INPUT,
+        start,
+        end,
+      );
+      await browser.executeObsidian(({ app }, id) => {
+        app.plugins.plugins[id].modal.close();
+      }, PLUGIN_ID);
+      await browser.executeObsidianCommand(
+        `${PLUGIN_ID}:search-obsidian-globally-state`,
+      );
+      await browser.$(INPUT).waitForExist();
+    }
+
+    const caret = () =>
+      browser.execute((selector) => {
+        const el = document.querySelector<HTMLInputElement>(selector);
+        return [el?.value, el?.selectionStart, el?.selectionEnd];
+      }, INPUT);
+
+    it("puts the cursor back where it was", async () => {
+      await reopenWithCaret("hello world", 3, 3);
+      await browser.waitUntil(
+        async () => (await caret()).join() === "hello world,3,3",
+        { timeoutMsg: `the caret moved: ${JSON.stringify(await caret())}` },
+      );
+    });
+
+    it("restores a selection too", async () => {
+      await reopenWithCaret("hello world", 2, 7);
+      await browser.waitUntil(
+        async () => (await caret()).join() === "hello world,2,7",
+        {
+          timeoutMsg: `the selection changed: ${JSON.stringify(await caret())}`,
+        },
+      );
+    });
+
+    it("does not show the search options menu", async () => {
+      await reopenWithCaret("pa", 2, 2);
+      await browser.pause(600);
+      expect(
+        await browser
+          .$(".suggestion-container.mod-search-suggestion")
+          .isExisting(),
+      ).toBe(false);
+    });
   });
 });

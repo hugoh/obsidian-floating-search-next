@@ -3,12 +3,21 @@ import "obsidian";
 /** The slice of the plugin that the e2e specs drive. */
 export interface TestPlugin {
   settings: Record<string, unknown> & {
-    savedSearches: { id: string; name: string; query: string }[];
+    searchViewState: { sortOrder?: string };
+  };
+  state: Record<string, unknown>;
+  initModal(state: Record<string, unknown>, caret?: unknown): void;
+  modal: {
+    close(): void;
+    searchLeaf: {
+      view: {
+        setSortOrder(order: string): void;
+        getState(): { sortOrder?: string };
+        dom: { focusedItem?: { file?: { path: string } } | null };
+      };
+    };
   };
   applySettingsUpdate(): void;
-  addSavedSearch(name: string, query: string): Promise<void>;
-  syncSavedSearchCommands(): void;
-  openCmdkModal(initialFilters?: string[]): void;
   loadData(): Promise<Record<string, unknown> | null>;
   saveData(data: unknown): Promise<void>;
 }
