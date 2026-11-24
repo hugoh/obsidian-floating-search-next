@@ -13,6 +13,7 @@ export interface TestPlugin {
       view: {
         setSortOrder(order: string): void;
         getState(): { sortOrder?: string };
+        dom: { focusedItem?: { file?: { path: string } } | null };
       };
     };
   };

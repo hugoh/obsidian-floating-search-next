@@ -106,13 +106,20 @@ describe("Pane native search", () => {
     await waitForResults();
     await browser.keys(["ArrowDown"]);
     await browser.pause(300);
+    const focusedPath = await browser.executeObsidian(
+      ({ app }, id) =>
+        app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
+          ?.path,
+      PLUGIN_ID,
+    );
+    expect(focusedPath).toBeDefined();
     await browser.keys(["Enter"]);
     await browser.waitUntil(
       async () =>
         (await browser.executeObsidian(
-          ({ app }) => app.workspace.getActiveFile()?.basename,
-        )) === "Pineapple",
-      { timeoutMsg: "Enter did not open the Pineapple note" },
+          ({ app }) => app.workspace.getActiveFile()?.path,
+        )) === focusedPath,
+      { timeoutMsg: `Enter did not open ${focusedPath}` },
     );
     await browser
       .$(".search-open-modal")

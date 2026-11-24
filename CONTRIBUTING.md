@@ -24,9 +24,9 @@ hk check --all     # everything CI runs
 
 `test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored) and uses
 [wdio-obsidian-service](https://github.com/jesse-r-s-hines/wdio-obsidian-service).
-By default it tests the latest release; CI also runs Obsidian 1.5.12, the
+By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
-example `"1.5.12/earliest latest/latest"`) to test others.
+example `"1.15.1/earliest latest/latest"`) to test others.
 
 ## Adding a language
 

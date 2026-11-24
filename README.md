@@ -59,7 +59,7 @@ BRAT also keeps the plugin up to date.
 - **Show instructions** shows the key hints under the modal.
 - Obsidian's own sort order (relevance by default), collapse, extra context, explain and match-case toggles are remembered between sessions. The query itself is never saved.
 
-Requires Obsidian 1.13 or later.
+Requires Obsidian 1.15.1 or later.
 
 ## Development
 

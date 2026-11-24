@@ -17,7 +17,11 @@ test("LICENSE is the unmodified GPL text so license detection recognises it", ()
 
 test("manifest minAppVersion covers the Obsidian APIs the plugin uses", () => {
   const { minAppVersion } = JSON.parse(read("manifest.json"));
-  const [major, minor] = minAppVersion.split(".").map(Number);
-  const atLeast113 = major > 1 || (major === 1 && minor >= 13);
-  assert.ok(atLeast113, "declarative settings (getSettingDefinitions) need 1.13");
+  const [major, minor, patch] = minAppVersion.split(".").map(Number);
+  const atLeast1151 =
+    major > 1 || (major === 1 && (minor > 15 || (minor === 15 && patch >= 1)));
+  assert.ok(
+    atLeast1151,
+    "the relevance sort of the search view (the default) needs 1.15.1",
+  );
 });

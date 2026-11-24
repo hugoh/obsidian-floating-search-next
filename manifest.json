@@ -2,7 +2,7 @@
   "id": "search-open",
   "name": "Search & Open",
   "version": "0.1.3",
-  "minAppVersion": "1.13.0",
+  "minAppVersion": "1.15.1",
   "description": "Search your vault and open the match, with a preview pane. A simplified fork of Floating Search by Boninall.",
   "author": "Hugo Haas",
   "authorUrl": "https://github.com/hugoh",
