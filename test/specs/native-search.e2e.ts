@@ -159,6 +159,104 @@ describe("Pane native search", () => {
     expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
   });
 
+  it("runs the close callback once however often the modal is closed", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
+    );
+    await browser
+      .$(".search-open-modal .search-input-container input")
+      .waitForExist();
+    const { calls, forgotten } = await browser.executeObsidian(
+      ({ app }, id) => {
+        const plugin = app.plugins.plugins[id];
+        const { modal } = plugin;
+        let calls = 0;
+        const original = modal.cb;
+        modal.cb = (...args) => {
+          calls++;
+          original(...args);
+        };
+        modal.close();
+        modal.close();
+        return { calls, forgotten: plugin.modal === undefined };
+      },
+      PLUGIN_ID,
+    );
+    expect(calls).toBe(1);
+    expect(forgotten).toBe(true);
+  });
+
+  it("previews the clicked result when two notes share a name", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    await browser
+      .$(".search-open-modal .search-open-modal-file-ctn")
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    for (const path of ["Archive/Pineapple.md", "Pineapple.md"]) {
+      await browser.executeObsidian(
+        ({ app }, id, wanted) => {
+          const { view } = app.plugins.plugins[id].modal.searchLeaf;
+          for (const [file, item] of view.dom.resultDomLookup) {
+            if (file.path === wanted) {
+              item.el.querySelector<HTMLElement>(".tree-item-self")?.click();
+            }
+          }
+        },
+        PLUGIN_ID,
+        path,
+      );
+      await browser.waitUntil(
+        async () =>
+          (await browser.executeObsidian(
+            ({ app }, id) =>
+              app.plugins.plugins[id].modal.fileLeaf?.view.file?.path,
+            PLUGIN_ID,
+          )) === path,
+        { timeoutMsg: `the preview did not switch to ${path}` },
+      );
+    }
+  });
+
+  it("closes the preview on Shift+Tab and leaves no trace of it", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    const previewPane = ".search-open-modal .search-open-modal-file-ctn";
+    await browser
+      .$(previewPane)
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    await browser.execute((selector) => {
+      document.querySelector<HTMLInputElement>(selector)?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Tab",
+          shiftKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }, ".search-open-modal .search-input-container input");
+    await browser
+      .$(previewPane)
+      .waitForExist({ reverse: true, timeoutMsg: "the preview stayed open" });
+    const leftovers = await browser.execute(() => ({
+      borderClass: document
+        .querySelector(".search-open-modal-content")
+        ?.classList.contains("has-file-ctn"),
+      wide: document
+        .querySelector(".search-open-modal")
+        ?.classList.contains("search-open-width"),
+    }));
+    expect(leftovers).toEqual({ borderClass: false, wide: false });
+    expect(
+      await browser.executeObsidian(
+        ({ app }, id) => app.plugins.plugins[id].modal.fileLeaf === undefined,
+        PLUGIN_ID,
+      ),
+    ).toBe(true);
+  });
+
   describe("reopening with the last state", () => {
     const INPUT = ".search-open-modal .search-input-container input";
 

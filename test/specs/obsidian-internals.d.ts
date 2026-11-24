@@ -8,12 +8,17 @@ export interface TestPlugin {
   state: Record<string, unknown>;
   initModal(state: Record<string, unknown>, caret?: unknown): void;
   modal: {
+    cb: (...args: unknown[]) => void;
     close(): void;
+    fileLeaf?: { view: { file?: { path: string } } };
     searchLeaf: {
       view: {
         setSortOrder(order: string): void;
         getState(): { sortOrder?: string };
-        dom: { focusedItem?: { file?: { path: string } } | null };
+        dom: {
+          focusedItem?: { file?: { path: string } } | null;
+          resultDomLookup: Map<{ path: string }, { el: HTMLElement }>;
+        };
       };
     };
   };

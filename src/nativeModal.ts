@@ -340,16 +340,9 @@ export class SearchOpenModal extends Modal {
           break;
         case "Tab":
           e.preventDefault();
-          if (e.shiftKey) {
-            if (this.fileLeaf) {
-              this.fileLeaf?.detach();
-              this.fileLeaf = undefined;
-              this.fileEmbeddedView?.unload();
-              this.modalEl.toggleClass("search-open-width", false);
-              this.fileEl.detach();
-
-              break;
-            }
+          if (e.shiftKey && this.fileLeaf) {
+            this.clearPreview();
+            break;
           }
 
           {
@@ -461,22 +454,14 @@ export class SearchOpenModal extends Modal {
           }
           if (!targetElement) return;
 
-          const fileInnerEl = targetElement?.getElementsByClassName(
-            "tree-item-inner",
-          )[0] as HTMLElement;
-          const innerText = fileInnerEl.innerText;
-          const file = this.plugin.app.metadataCache.getFirstLinkpathDest(
-            innerText,
-            "",
-          );
-
-          if (file) {
-            const item = currentView.dom.resultDomLookup.get(file);
+          for (const [file, item] of currentView.dom.resultDomLookup) {
+            if (item.el !== targetElement) continue;
             currentView.dom.setFocusedItem(item);
             void this.initFileView(file, undefined);
             (
               this.searchLeaf.view as SearchView
             ).searchComponent?.inputEl?.focus();
+            break;
           }
         }
 
@@ -494,6 +479,7 @@ export class SearchOpenModal extends Modal {
     this.fileLeaf = undefined;
     this.fileEmbeddedView = undefined;
     this.fileEl?.remove();
+    this.contentEl.removeClass("has-file-ctn");
     this.modalEl.removeClass("search-open-width");
   }
 

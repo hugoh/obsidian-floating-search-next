@@ -52,7 +52,7 @@ interface HighlightingEditor {
 export default class SearchOpenPlugin extends Plugin {
   settings: SearchOpenSettings;
   private state: SearchState;
-  private modal: SearchOpenModal;
+  private modal: SearchOpenModal | undefined;
 
   public applySettingsUpdate = debounce(async () => {
     await this.saveSettings();
@@ -81,9 +81,11 @@ export default class SearchOpenPlugin extends Plugin {
   }
 
   onunload() {
-    // Saving is debounced; do not drop a change made just before unloading.
-    void this.applySettingsUpdate.run();
+    // Closing the modal queues a save of its final state; flush it, and drop
+    // the pending "forget the last query" timer so nothing outlives the plugin.
     this.modal?.close();
+    void this.applySettingsUpdate.run();
+    this.forgetQuery.cancel();
   }
 
   // The monkeypatches are only needed once a search is opened, so they are
@@ -148,8 +150,9 @@ export default class SearchOpenPlugin extends Plugin {
     this.ensurePatched();
     this.modal?.close();
 
-    this.modal = new SearchOpenModal(
+    const modal: SearchOpenModal = new SearchOpenModal(
       (closing, closingCaret) => {
+        if (this.modal === modal) this.modal = undefined;
         this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
         this.lastCaret = closingCaret;
         this.settings.searchViewState = { ...this.state, query: "" };
@@ -160,7 +163,8 @@ export default class SearchOpenPlugin extends Plugin {
       state,
       caret,
     );
-    this.modal.open();
+    this.modal = modal;
+    modal.open();
   }
 
   patchWorkspace() {
@@ -189,8 +193,7 @@ export default class SearchOpenPlugin extends Plugin {
         },
       pushUndoHistory(old) {
         return function (leaf: WorkspaceLeaf, id: string, ...args: unknown[]) {
-          const viewState = leaf.getViewState();
-          if (viewState.type === "search") {
+          if (isEmbeddedLeaf(leaf) && leaf.getViewState().type === "search") {
             return;
           }
           return old.call(this, leaf, id, ...args);
@@ -313,9 +316,8 @@ export default class SearchOpenPlugin extends Plugin {
           return function (e: DragEvent, a: TFile) {
             const result = old.call(this, e, a);
 
-            window.setTimeout(() => {
-              self.modal?.close();
-            }, 10);
+            const modal = self.modal;
+            window.setTimeout(() => modal?.close(), 10);
             return result;
           };
         },

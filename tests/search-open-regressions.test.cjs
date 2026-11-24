@@ -80,15 +80,29 @@ test('native initialization cannot change selection after closing during delayed
   assert.deepEqual(h.clock.errors, []);
 });
 
-test('plugin unload closes the search modal', () => {
+test('the undo-history patch only skips embedded search leaves', () => {
   const h = createHarness();
-  const closed = [];
-  h.default.prototype.onunload.call({
-    modal: { close() { closed.push('native'); } },
-        applySettingsUpdate: { run() {} },
+  const { Workspace } = h.obsidian;
+  Workspace.prototype.pushUndoHistory = () => 'recorded';
+  const uninstallers = [];
+  h.default.prototype.patchWorkspace.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
+  const leafOf = (embedded) => ({ embedded, getViewState: () => ({ type: 'search' }) });
+  const workspace = new Workspace();
+  assert.equal(workspace.pushUndoHistory(leafOf(false), 'id'), 'recorded', 'a normal search view keeps its history');
+  assert.equal(workspace.pushUndoHistory(leafOf(true), 'id'), undefined, 'the embedded one is skipped');
+  uninstallers.forEach((uninstall) => uninstall());
+});
 
+test('unloading closes the modal first, then saves and drops the pending timer', () => {
+  const h = createHarness();
+  const steps = [];
+  h.default.prototype.onunload.call({
+    modal: { close() { steps.push('close'); } },
+    applySettingsUpdate: { run() { steps.push('save'); } },
+    forgetQuery: { cancel() { steps.push('cancel'); } },
   });
-  assert.deepEqual(closed, ['native']);
+  assert.deepEqual(steps, ['close', 'save', 'cancel']);
 });
 
 test('native initialization does not overwrite text typed before the delayed state is applied', async () => {

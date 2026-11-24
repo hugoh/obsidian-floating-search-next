@@ -242,7 +242,7 @@ function createHarness() {
     },
     async saveSettings() {},
   };
-  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin,
+  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian,
     mainLeaf, makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 
