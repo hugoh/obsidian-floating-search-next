@@ -4,12 +4,12 @@ import {
   type SettingDefinitionItem,
 } from "obsidian";
 import { strings } from "./i18n";
-import type PaneSearchPlugin from "./paneSearchIndex";
+import type SearchOpenPlugin from "./main";
 
-export class PaneSearchSettingTab extends PluginSettingTab {
-  plugin: PaneSearchPlugin;
+export class SearchOpenSettingTab extends PluginSettingTab {
+  plugin: SearchOpenPlugin;
 
-  constructor(app: App, plugin: PaneSearchPlugin) {
+  constructor(app: App, plugin: SearchOpenPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }

@@ -16,7 +16,7 @@ export interface SearchState extends Record<string, unknown> {
   sortOrder?: SortOrder;
 }
 
-export interface PaneSearchSettings {
+export interface SearchOpenSettings {
   searchViewState: SearchState;
   showInstructions: boolean;
 }
@@ -31,7 +31,7 @@ const SORT_ORDERS: readonly SortOrder[] = [
   "byCreatedTimeReverse",
 ];
 
-export const DEFAULT_SETTINGS: PaneSearchSettings = {
+export const DEFAULT_SETTINGS: SearchOpenSettings = {
   searchViewState: {
     collapseAll: false,
     explainSearch: false,
@@ -75,7 +75,7 @@ function sanitizeViewState(raw: unknown): SearchState {
 }
 
 /** Turns whatever data.json held into valid settings; never throws. */
-export function sanitizeSettings(raw: unknown): PaneSearchSettings {
+export function sanitizeSettings(raw: unknown): SearchOpenSettings {
   const data = isRecord(raw) ? raw : {};
   const d = DEFAULT_SETTINGS;
   return {

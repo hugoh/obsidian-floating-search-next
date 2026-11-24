@@ -15,6 +15,7 @@ bun install
 bun run dev        # rebuild main.js on change
 bun run test       # unit tests (bun) and regression tests (node)
 bun run test:e2e   # builds, then runs the plugin in a real Obsidian
+bun run screenshot # retakes media/screenshot.png for the README
 bun run lint       # eslint-plugin-obsidianmd, the rules the plugin review applies
 bun run typecheck  # plugin, unit tests and e2e specs
 bun run build      # typecheck + production bundle

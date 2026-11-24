@@ -102,7 +102,7 @@ describe("obsidian://fs", () => {
         query: "pineapple",
       });
     });
-    const input = browser.$(".pane-search-modal .search-input-container input");
+    const input = browser.$(".search-open-modal .search-input-container input");
     await input.waitForExist({ timeout: 10_000 });
     await browser.waitUntil(
       async () => (await input.getValue()) === "pineapple",

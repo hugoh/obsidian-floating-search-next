@@ -6,38 +6,38 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-.pane-search-modal {
+.search-open-modal {
 	width: 700px;
 	padding-bottom: 0;
 	transition: width 0.15s ease;
 }
 
-.pane-search-modal.pane-search-width {
+.search-open-modal.search-open-width {
 	width: 1200px;
 }
 
-.pane-search-modal-search-ctn,
-.pane-search-modal-file-ctn {
+.search-open-modal-search-ctn,
+.search-open-modal-file-ctn {
 	height: 100%;
 	width: 100%;
 }
 
-.pane-search-modal-file-ctn .view-header {
+.search-open-modal-file-ctn .view-header {
 	display: none;
 }
 
-.pane-search-modal-content {
+.search-open-modal-content {
 	height: 800px;
 	display: flex;
 	align-items: center;
 	flex-direction: row;
 }
 
-.pane-search-modal-file-ctn .view-content {
+.search-open-modal-file-ctn .view-content {
 	height: 100%;
 }
 
-.pane-search-modal .modal-close-button {
+.search-open-modal .modal-close-button {
 	z-index: 40;
 }
 
@@ -61,11 +61,11 @@ If your plugin does not need CSS, delete this file.
 	display: none;
 }
 
-.modal-container.pane-search-modal-container.mod-dim {
+.modal-container.search-open-modal-container.mod-dim {
 	z-index: 30;
 }
 
-.pane-search-modal-instructions {
+.search-open-modal-instructions {
 	border-top: 1px solid var(--background-secondary);
 	user-select: none;
 	font-size: var(--font-ui-smaller);
@@ -78,21 +78,21 @@ If your plugin does not need CSS, delete this file.
 	gap: var(--size-4-3);
 }
 
-.pane-search-modal-instructions .pane-search-modal-instructions-key {
+.search-open-modal-instructions .search-open-modal-instructions-key {
 	font-weight: var(--font-extrabold);
 	margin-right: var(--size-2-2);
 }
 
-.pane-search-modal-content.has-file-ctn
-	.pane-search-modal-search-ctn {
+.search-open-modal-content.has-file-ctn
+	.search-open-modal-search-ctn {
 	border-right: 1px solid var(--background-secondary);
 }
 
-.pane-search-modal-file-ctn:focus-within {
+.search-open-modal-file-ctn:focus-within {
 	border-bottom: 3px solid var(--color-accent);
 }
 
-.pane-search-modal-file-ctn:focus-within .cm-scroller {
+.search-open-modal-file-ctn:focus-within .cm-scroller {
 	background-color: var(--background-primary);
 }
 
@@ -101,26 +101,26 @@ If your plugin does not need CSS, delete this file.
 }
 
 /* Keep the native floating preview usable in narrow windows. */
-.pane-search-modal {
+.search-open-modal {
 	max-width: calc(100vw - 32px);
 	container-type: inline-size;
 }
-.pane-search-modal-content {
+.search-open-modal-content {
 	max-height: 75vh;
 	min-height: 0;
 }
-.pane-search-modal-search-ctn,
-.pane-search-modal-file-ctn {
+.search-open-modal-search-ctn,
+.search-open-modal-file-ctn {
 	min-width: 0;
 	min-height: 0;
 	flex: 1 1 0;
 }
 @container (max-width: 650px) {
-	.pane-search-modal-content {
+	.search-open-modal-content {
 		flex-direction: column;
 		align-items: stretch;
 	}
-	.pane-search-modal-content.has-file-ctn .pane-search-modal-search-ctn {
+	.search-open-modal-content.has-file-ctn .search-open-modal-search-ctn {
 		border-right: none;
 		border-bottom: 1px solid var(--background-secondary);
 	}

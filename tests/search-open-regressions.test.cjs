@@ -10,7 +10,7 @@ test('closing the native modal while its search leaf initializes stops post-awai
   let stateWrites = 0;
   leaf.view.setState = async () => { stateWrites++; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
   const continued = [];
   for (const name of ['initInput', 'initContent']) {
     modal[name] = () => continued.push(name);
@@ -33,7 +33,7 @@ test('closing the native modal during a preview read prevents late focus', async
   let readStarted = false;
   leaf.openFile = () => { readStarted = true; return pending.promise; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
   modal.searchLeaf = h.makeLeaf();
   modal.searchEmbeddedView = { unload() {} };
   const input = modal.searchLeaf.view.searchComponent.inputEl;
@@ -50,7 +50,7 @@ test('closing the native modal during a preview read prevents late focus', async
 
 test('native search clears its preview when no result is focused', async () => {
   const h = createHarness();
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
   modal.searchLeaf = h.makeLeaf();
   modal.searchLeaf.view.dom = { focusedItem: undefined };
   await modal.initFileView(new h.TFile('previous.md'), undefined);
@@ -58,7 +58,7 @@ test('native search clears its preview when no result is focused', async () => {
   modal.autoPreviewFocusedItem();
   assert.equal(preview.leaf.detached, true);
   assert.equal(preview.embedded.unloaded, true);
-  assert.equal(modal.modalEl.hasClass('pane-search-width'), false);
+  assert.equal(modal.modalEl.hasClass('search-open-width'), false);
   assert.equal(modal.fileLeaf, undefined);
 });
 
@@ -69,7 +69,7 @@ test('native initialization cannot change selection after closing during delayed
   let setStateStarted = false;
   leaf.view.setState = () => { setStateStarted = true; return pending.promise; };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: 'needle' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(setStateStarted, true);
@@ -98,7 +98,7 @@ test('native initialization does not overwrite text typed before the delayed sta
   leaf.view.setState = async (state) => { delayed.push(state); };
   leaf.view.searchComponent = { inputEl: { value: 'pineapple', setSelectionRange() {} } };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: '' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: '' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(delayed.length, 0, 'User input must not be replaced by the saved state');
@@ -111,7 +111,7 @@ test('native initialization still applies the delayed state while the input is u
   leaf.view.setState = async (state) => { delayed.push(state); };
   leaf.view.searchComponent = { inputEl: { value: '', setSelectionRange() {} } };
   h.leafModule.nextLeaf = leaf;
-  const modal = new h.PaneSearchModal(() => {}, h.plugin, { query: '' });
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: '' });
   await modal.initSearchView(new ElementStub());
   await h.clock.tick(0);
   assert.equal(delayed.length, 1);

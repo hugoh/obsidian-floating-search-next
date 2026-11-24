@@ -2,7 +2,7 @@ import { browser, expect } from "@wdio/globals";
 import { afterEach, describe, it } from "mocha";
 import { closeModals, PLUGIN_ID, resetPlugin, waitForPlugin } from "./helpers";
 
-const TITLES = ".pane-search-modal .search-result-file-title";
+const TITLES = ".search-open-modal .search-result-file-title";
 
 async function waitForResults() {
   await browser.waitUntil(async () => (await browser.$$(TITLES)).length > 0, {
@@ -22,7 +22,7 @@ describe("Pane native search", () => {
     await browser.executeObsidianCommand(
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
-    const input = browser.$(".pane-search-modal .search-input-container input");
+    const input = browser.$(".search-open-modal .search-input-container input");
     await input.waitForExist();
     await browser.waitUntil(() => input.isFocused(), {
       timeoutMsg: "the search input never received focus",
@@ -57,7 +57,7 @@ describe("Pane native search", () => {
     await waitForResults();
     await browser.keys(["ArrowDown", "Tab"]);
     await browser
-      .$(".pane-search-modal .pane-search-modal-file-ctn")
+      .$(".search-open-modal .search-open-modal-file-ctn")
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
   });
 
@@ -67,7 +67,7 @@ describe("Pane native search", () => {
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
     await browser
-      .$(".pane-search-modal .search-input-container input")
+      .$(".search-open-modal .search-input-container input")
       .waitForExist();
     await browser.executeObsidian(({ app }, id) => {
       app.plugins.plugins[id].modal.searchLeaf.view.setSortOrder(
@@ -91,7 +91,7 @@ describe("Pane native search", () => {
       `${PLUGIN_ID}:search-obsidian-globally`,
     );
     await browser
-      .$(".pane-search-modal .search-input-container input")
+      .$(".search-open-modal .search-input-container input")
       .waitForExist();
     const sortOrder = await browser.executeObsidian(
       ({ app }, id) =>
@@ -115,7 +115,7 @@ describe("Pane native search", () => {
       { timeoutMsg: "Enter did not open the Pineapple note" },
     );
     await browser
-      .$(".pane-search-modal")
+      .$(".search-open-modal")
       .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
   });
 
@@ -141,7 +141,7 @@ describe("Pane native search", () => {
           cancelable: true,
         }),
       );
-    }, ".pane-search-modal .search-input-container input");
+    }, ".search-open-modal .search-input-container input");
     await browser.waitUntil(
       async () =>
         (await browser.executeObsidian(
@@ -149,11 +149,11 @@ describe("Pane native search", () => {
         )) > before,
       { timeoutMsg: "Mod+Enter did not open a new tab" },
     );
-    expect(await browser.$(".pane-search-modal").isExisting()).toBe(true);
+    expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
   });
 
   describe("reopening with the last state", () => {
-    const INPUT = ".pane-search-modal .search-input-container input";
+    const INPUT = ".search-open-modal .search-input-container input";
 
     async function reopenWithCaret(query: string, start: number, end: number) {
       await waitForPlugin();

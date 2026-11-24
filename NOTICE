@@ -1,10 +1,10 @@
-Pane Search
-===========
+Search & Open
+=============
 
 Copyright (C) Boninall (Quorafind) and upstream contributors
 Copyright (C) 2026 AiurArtanis (Float Search Window fork)
 Copyright (C) 2026 Peingxious (stability fork)
-Copyright (C) 2026 Hugo Haas (Pane Search: consolidation, tests and tooling)
+Copyright (C) 2026 Hugo Haas (Search & Open: consolidation, simplification, tests and tooling)
 
 This project is licensed under the GNU General Public License v3.0 (see
 LICENSE). It combines work from several GPL-3.0 projects and includes
@@ -17,12 +17,15 @@ Project lineage (all GPL-3.0, verified against each repository's LICENSE)
   https://github.com/Quorafind/Obsidian-Float-Search
 - Float Search Window, by AiurArtanis (continues upstream 4.3.0)
   https://github.com/AiurArtanis/Obsidian-Float-Search-Window
-  Contributed: native file opening and preview lifecycle fixes, regression
-  tests. (Its filter bar, quick search and tabbed settings were later removed.)
+  Contributed: the composition (IME) guard, the typed localization and its
+  zh-CN translation, preview and file-opening lifecycle fixes, and the
+  regression test harness. (Its filter bar, quick search and tabbed settings
+  were later removed.)
 - Obsidian Float Search, fork by Peingxious
   https://github.com/Peingxious/Obsidian-Float-Search
-  Contributed: stability fixes (highlight crash in embedded previews, memory
-  leaks). (Its exclusions, saved searches and query engine were later removed.)
+  Contributed: the crash guard for highlights in embedded previews and
+  applying the patches on first use. (Its exclusions, saved searches and
+  query engine were later removed.)
 
 Reviewed but not included: https://github.com/smilingpoplar/Obsidian-Float-Search
 (GPL-3.0). Its changes are superseded by or redundant with the code above.
@@ -56,6 +59,31 @@ src/leafView.ts is derived from obsidian-hover-editor
     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+The ribbon icon is derived from Phosphor Icons (https://phosphoricons.com),
+MIT License:
+
+    MIT License
+
+    Copyright (c) 2023 Phosphor Icons
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
 
 The bundled main.js also contains monkey-around by PJ Eby
 (https://github.com/pjeby/monkey-around), ISC License.

@@ -4,6 +4,9 @@ import { parseObsidianVersions } from "wdio-obsidian-service";
 
 const cacheDir = path.resolve(".obsidian-cache");
 
+// `bun run screenshot` runs the README screenshot spec in its own vault instead of the tests.
+const screenshots = Boolean(env.SCREENSHOTS);
+
 // "appVersion/installerVersion" pairs, space separated; override to widen the matrix.
 const versions = await parseObsidianVersions(
 	env.OBSIDIAN_VERSIONS ?? "latest/latest",
@@ -18,7 +21,7 @@ if (env.CI) {
 export const config: WebdriverIO.Config = {
 	runner: "local",
 	framework: "mocha",
-	specs: ["./specs/**/*.e2e.ts"],
+	specs: screenshots ? ["./screenshots/*.ts"] : ["./specs/**/*.e2e.ts"],
 	maxInstances: Number(env.WDIO_MAX_INSTANCES ?? 1),
 	capabilities: versions.map<WebdriverIO.Capabilities>(
 		([appVersion, installerVersion]) => ({
@@ -27,7 +30,9 @@ export const config: WebdriverIO.Config = {
 				appVersion,
 				installerVersion,
 				plugins: [path.resolve(".")],
-				vault: path.resolve("test/vaults/simple"),
+				vault: path.resolve(
+					screenshots ? "test/vaults/screenshots" : "test/vaults/simple",
+				),
 			},
 		}),
 	),

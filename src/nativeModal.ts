@@ -11,7 +11,7 @@ import {
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
-import type PaneSearchPlugin from "./paneSearchIndex";
+import type SearchOpenPlugin from "./main";
 import type { SearchState } from "./settings";
 
 /**
@@ -36,10 +36,10 @@ function createInstructionElement(
 ) {
   const divEl = parentEl.createDiv({ cls: divCls });
   const iconEl = divEl.createSpan({
-    cls: "pane-search-modal-instructions-key",
+    cls: "search-open-modal-instructions-key",
   });
   const textEl = divEl.createSpan({
-    cls: "pane-search-modal-instructions-text",
+    cls: "search-open-modal-instructions-text",
   });
 
   iconEl.setText(keyText);
@@ -59,8 +59,8 @@ export interface PreviewState extends Record<string, unknown> {
   match?: { content?: string; matches?: unknown[] };
 }
 
-export class PaneSearchModal extends Modal {
-  private readonly plugin: PaneSearchPlugin;
+export class SearchOpenModal extends Modal {
+  private readonly plugin: SearchOpenPlugin;
   private searchEmbeddedView: EmbeddedView;
   private fileEmbeddedView: EmbeddedView | undefined;
 
@@ -88,7 +88,7 @@ export class PaneSearchModal extends Modal {
 
   constructor(
     cb: (state: SearchState, caret: Caret) => void,
-    plugin: PaneSearchPlugin,
+    plugin: SearchOpenPlugin,
     state: SearchState,
     caret?: Caret,
   ) {
@@ -104,10 +104,10 @@ export class PaneSearchModal extends Modal {
     const { contentEl, containerEl, modalEl } = this;
 
     this.searchCtnEl = contentEl.createDiv({
-      cls: "pane-search-modal-search-ctn",
+      cls: "search-open-modal-search-ctn",
     });
     this.instructionsEl = modalEl.createDiv({
-      cls: "pane-search-modal-instructions",
+      cls: "search-open-modal-instructions",
     });
 
     this.initInstructions(this.instructionsEl);
@@ -159,43 +159,43 @@ export class PaneSearchModal extends Modal {
     const s = strings();
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-navigate",
+      "search-open-modal-instructions-navigate",
       "↑↓",
       s.instrNavigate,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-collapse",
+      "search-open-modal-instructions-collapse",
       "Shift+↑↓",
       s.instrCollapse,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-enter",
+      "search-open-modal-instructions-enter",
       "↵",
       s.instrOpenAndClose,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-mod-enter",
+      "search-open-modal-instructions-mod-enter",
       Platform.isMacOS ? "⌘↵" : "Ctrl+↵",
       s.instrOpenNewTab,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-tab",
+      "search-open-modal-instructions-tab",
       "Tab/Shift+Tab",
       s.instrPreview,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-switch",
+      "search-open-modal-instructions-switch",
       "Ctrl+G",
       s.instrSwitchView,
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-click",
+      "search-open-modal-instructions-click",
       "Alt+Click",
       s.instrAltClick,
     );
@@ -206,9 +206,9 @@ export class PaneSearchModal extends Modal {
     modalEl: HTMLElement,
     containerEl: HTMLElement,
   ) {
-    contentEl.classList.add("pane-search-modal-content");
-    modalEl.classList.add("pane-search-modal");
-    containerEl.classList.add("pane-search-modal-container");
+    contentEl.classList.add("search-open-modal-content");
+    modalEl.classList.add("search-open-modal");
+    containerEl.classList.add("search-open-modal-container");
   }
 
   async initSearchView(contentEl: HTMLElement) {
@@ -345,7 +345,7 @@ export class PaneSearchModal extends Modal {
               this.fileLeaf?.detach();
               this.fileLeaf = undefined;
               this.fileEmbeddedView?.unload();
-              this.modalEl.toggleClass("pane-search-width", false);
+              this.modalEl.toggleClass("search-open-width", false);
               this.fileEl.detach();
 
               break;
@@ -494,7 +494,7 @@ export class PaneSearchModal extends Modal {
     this.fileLeaf = undefined;
     this.fileEmbeddedView = undefined;
     this.fileEl?.remove();
-    this.modalEl.removeClass("pane-search-width");
+    this.modalEl.removeClass("search-open-width");
   }
 
   async initFileView(file: TFile, state: PreviewState | undefined) {
@@ -544,10 +544,10 @@ export class PaneSearchModal extends Modal {
 
     const { contentEl } = this;
     this.fileEl = contentEl.createDiv({
-      cls: "pane-search-modal-file-ctn",
+      cls: "search-open-modal-file-ctn",
     });
     contentEl.addClass("has-file-ctn");
-    this.modalEl.toggleClass("pane-search-width", true);
+    this.modalEl.toggleClass("search-open-width", true);
     this.fileEl.onkeydown = (e) => {
       if (e.ctrlKey && e.key === "g") {
         e.preventDefault();

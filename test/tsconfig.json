@@ -9,5 +9,5 @@
     "noEmit": true,
     "types": ["node", "mocha", "@wdio/globals/types", "wdio-obsidian-service"]
   },
-  "include": ["./specs/**/*.ts", "./*.mts"]
+  "include": ["./specs/**/*.ts", "./screenshots/**/*.ts", "./*.mts"]
 }

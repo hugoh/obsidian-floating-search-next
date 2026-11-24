@@ -1,7 +1,7 @@
 {
-  "name": "pane-search",
+  "name": "search-open",
   "version": "0.1.3",
-  "description": "Open Obsidian's global search in a floating modal with a preview pane. A fork of Floating Search by Boninall.",
+  "description": "Search your vault and open the match, with a preview pane. A simplified fork of Floating Search by Boninall.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -12,6 +12,7 @@
     "test:unit": "bun test",
     "test:regression": "node --test tests/*.test.cjs",
     "test:e2e": "bun run build && wdio run ./test/wdio.conf.mts",
+    "screenshot": "bun run build && SCREENSHOTS=1 wdio run ./test/wdio.conf.mts",
     "typecheck": "tsc --noEmit && tsc -p test",
     "audit": "bun audit",
     "lint:unresolved-types": "node scripts/lint-without-moment.mjs"

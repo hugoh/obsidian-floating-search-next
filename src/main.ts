@@ -14,14 +14,14 @@ import {
 } from "obsidian";
 import { strings } from "./i18n";
 import { isEmbeddedLeaf } from "./leafView";
-import { type Caret, PaneSearchModal } from "./nativeModal";
+import { type Caret, SearchOpenModal } from "./nativeModal";
 import {
   DEFAULT_SETTINGS,
-  type PaneSearchSettings,
+  type SearchOpenSettings,
   type SearchState,
   sanitizeSettings,
 } from "./settings";
-import { PaneSearchSettingTab } from "./settingsTab";
+import { SearchOpenSettingTab } from "./settingsTab";
 
 interface CanvasNode {
   id: string;
@@ -49,10 +49,10 @@ interface HighlightingEditor {
   hasHighlight?: (...args: unknown[]) => boolean;
 }
 
-export default class PaneSearchPlugin extends Plugin {
-  settings: PaneSearchSettings;
+export default class SearchOpenPlugin extends Plugin {
+  settings: SearchOpenSettings;
   private state: SearchState;
-  private modal: PaneSearchModal;
+  private modal: SearchOpenModal;
 
   public applySettingsUpdate = debounce(async () => {
     await this.saveSettings();
@@ -74,10 +74,10 @@ export default class PaneSearchPlugin extends Plugin {
     this.registerObsidianURIHandler();
     this.registerObsidianCommands();
 
-    this.addRibbonIcon("pane-search-window", strings().ribbonSearch, () =>
+    this.addRibbonIcon("search-open-window", strings().ribbonSearch, () =>
       this.initModal({ ...this.state, query: "" }),
     );
-    this.addSettingTab(new PaneSearchSettingTab(this.app, this));
+    this.addSettingTab(new SearchOpenSettingTab(this.app, this));
   }
 
   onunload() {
@@ -148,7 +148,7 @@ export default class PaneSearchPlugin extends Plugin {
     this.ensurePatched();
     this.modal?.close();
 
-    this.modal = new PaneSearchModal(
+    this.modal = new SearchOpenModal(
       (closing, closingCaret) => {
         this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
         this.lastCaret = closingCaret;
@@ -350,7 +350,7 @@ export default class PaneSearchPlugin extends Plugin {
     // Phosphor Bold: app-window + magnifying-glass (MIT)
     // https://phosphoricons.com/  256 viewBox scaled into Obsidian's 100x100 icon slot
     addIcon(
-      "pane-search-window",
+      "search-open-window",
       `<g transform="translate(3 10) scale(0.275)" fill="currentColor"><path d="M216,36H40A20,20,0,0,0,20,56V200a20,20,0,0,0,20,20H216a20,20,0,0,0,20-20V56A20,20,0,0,0,216,36Zm-4,160H44V60H212ZM60,92a16,16,0,1,1,16,16A16,16,0,0,1,60,92Zm48,0a16,16,0,1,1,16,16A16,16,0,0,1,108,92Z"/></g><g transform="translate(38 38) scale(0.24)" fill="currentColor"><path d="M232.49,215.51,185,168a92.12,92.12,0,1,0-17,17l47.53,47.54a12,12,0,0,0,17-17ZM44,112a68,68,0,1,1,68,68A68.07,68.07,0,0,1,44,112Z"/></g>`,
     );
   }

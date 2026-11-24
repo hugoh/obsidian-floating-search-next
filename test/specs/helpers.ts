@@ -1,6 +1,6 @@
 import { browser } from "@wdio/globals";
 
-export const PLUGIN_ID = "pane-search";
+export const PLUGIN_ID = "search-open";
 
 export async function waitForPlugin() {
   await browser.waitUntil(

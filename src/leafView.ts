@@ -18,7 +18,7 @@ import {
   WorkspaceSplit,
   WorkspaceTabs,
 } from "obsidian";
-import type PaneSearchPlugin from "src/paneSearchIndex";
+import type SearchOpenPlugin from "src/main";
 import type { OpenViewState } from "src/types/types-obsidian";
 
 export interface EmbeddedViewParent {
@@ -59,7 +59,7 @@ function nosuper<T>(base: new (...args: unknown[]) => T): new () => T {
 }
 
 export const spawnLeafView = (
-  plugin: PaneSearchPlugin,
+  plugin: SearchOpenPlugin,
   initiatingEl?: HTMLElement,
   leaf?: WorkspaceLeaf,
   onShowCallback?: () => unknown,
@@ -112,7 +112,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
 
   originalPath: string; // these are kept to avoid adopting targets w/a different link
   originalLinkText: string;
-  static activeWindows(plugin: PaneSearchPlugin) {
+  static activeWindows(plugin: SearchOpenPlugin) {
     const windows: Window[] = [window];
     const { floatingSplit } = plugin.app.workspace;
     if (floatingSplit) {
@@ -123,7 +123,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
     return windows;
   }
 
-  static containerForDocument(doc: Document, plugin: PaneSearchPlugin) {
+  static containerForDocument(doc: Document, plugin: SearchOpenPlugin) {
     if (doc !== window.document && plugin.app.workspace.floatingSplit)
       for (const container of plugin.app.workspace.floatingSplit.children) {
         if (container.doc === doc) return container;
@@ -131,7 +131,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
     return plugin.app.workspace.rootSplit;
   }
 
-  static activePopovers(plugin: PaneSearchPlugin) {
+  static activePopovers(plugin: SearchOpenPlugin) {
     return this.activeWindows(plugin).flatMap((win) =>
       this.popoversForWindow(win),
     );
@@ -155,7 +155,7 @@ export class EmbeddedView extends nosuper(HoverPopover) {
   constructor(
     parent: EmbeddedViewParent,
     public targetEl: HTMLElement,
-    public plugin: PaneSearchPlugin,
+    public plugin: SearchOpenPlugin,
     waitTime?: number,
     public onShowCallback?: () => unknown,
   ) {

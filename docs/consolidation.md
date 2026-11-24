@@ -11,10 +11,28 @@ provenance record.
 > **Status.** Most of what is recorded below was later removed to narrow the plugin to
 > the global search modal: the CMDK quick search and its query-syntax engine, saved
 > searches, exclusions, the filter bar and regex mode, quick create, the split / tab /
-> window / sidebar views, the operator commands, the `setState` re-route, the file-path display, and the
-> editor and file context menu items. Entries
-> that mention those are kept as provenance only. The modal, the embedded leaf, the
-> i18n scaffolding and the lifecycle fixes remain. The history is in the repository.
+> window / sidebar views, the operator commands, the `setState` re-route, the
+> file-path display, and the editor and file context menu items. Entries that mention
+> those are kept as provenance only. The modal, the embedded leaf, the i18n
+> scaffolding and the lifecycle fixes remain. The history is in the repository.
+
+## What remains, and from whom
+
+Measured when the plugin was renamed Search & Open: each non-trivial source line
+(`src/*.ts`, `styles.css`, ignoring whitespace and trailing punctuation) was matched
+against the final upstream, AiurArtanis and Peingxious versions in the repository
+history, in that order. About 1,380 lines were counted:
+
+| Origin | Share | What it is |
+|---|---|---|
+| Upstream (Quorafind, latest) | 55% | The modal, the embedded search view and preview, key handling, Obsidian typings, most of `leafView.ts` (itself derived from hover-editor), most of the CSS |
+| Written or reworked here | 36% | Settings, the plugin entry, `latestQueue.ts`, the lifecycle and caret handling, the rewritten tests |
+| AiurArtanis | 8% | The typed `strings()` and zh-CN translation, the IME guard, parts of the modal and CSS; the regression test harness (`tests/harness.cjs`, about 95% theirs) |
+| Peingxious | 1% | The highlight crash guard and applying the patches on first use |
+
+A line counts as "written here" when it is not found verbatim, so reformatting and
+renamed identifiers push the share up; treat the numbers as a rough guide, not an audit.
+
 
 ## Features and where they came from
 
@@ -148,29 +166,23 @@ Each entry: what was wrong, why, the fix, and what guards it now.
   completely; judged not worth the complexity (the user types the pattern, the classic
   class is blocked, and the native search has the same weakness). Documented in the README.
 
-## Open items
-
-Tracked from the code review; move a row to the fixes table when done.
-
-- The two modals still have separate preview rendering (they differ in layout and focus handling).
-
 ## Naming and releasing
 
-- The plugin is named Pane Search (id `pane-search`). The upstream id `float-search`
+- The plugin is named Search & Open (id `search-open`). The upstream id `float-search`
   and name "Floating Search" belong to the original listing, so this is a separate
   plugin. It was first named Floating Search Next (`floating-search-next`) and
-  positioned as a successor; the "Next" suffix was dropped when that framing was
-  reconsidered, and the name remains provisional.
+  positioned as a successor, then Pane Search (`pane-search`), and was renamed once
+  it narrowed to opening the file that matches a search. The GitHub repository is
+  still `hugoh/obsidian-pane-search`.
 - For now the plugin is not listed on the Obsidian Community site. Forks need the
   original author's approval to be listed, so it is installed with BRAT until that is
   sorted out (see the README).
 - Installing both at once conflicts (same patched internals, same `obsidian://fs`
-  handler); the README advises against running them together. The CSS classes no
-  longer overlap, since this plugin uses `pane-search-` rather than `float-search-`.
+  handler); the README advises against running them together.
 - Settings are stored per plugin id, so users start fresh, including anyone who
-  installed `floating-search-next`; there is no automatic import.
+  installed `floating-search-next` or `pane-search`; there is no automatic import.
 - Versions started at 0.1.0 (the first release was forced with `release-as`, which
   has since been removed from `release-please-config.json`). While below 1.0,
   `bump-minor-pre-major` keeps breaking changes in the 0.x line.
-- Differences from upstream 4.3.0 that users should know about: minimum Obsidian 1.13.0, `block:`/`section:`/`line:`
-  semantics, saved-search command ids, the new plugin id.
+- Differences from upstream 4.3.0 that users should know about: minimum Obsidian 1.13.0,
+  the removal of most features (see the status note above), and the new plugin id.
