@@ -118,4 +118,36 @@ describe("Pane native search", () => {
       .$(".pane-search-modal")
       .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
   });
+
+  it("opens the focused result in a new tab on Mod+Enter", async () => {
+    await waitForPlugin();
+    await browser.executeObsidian(async ({ app }) => {
+      await app.workspace.openLinkText("Other", "", false);
+    });
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown"]);
+    await browser.pause(300);
+    const before = await browser.executeObsidian(
+      ({ app }) => app.workspace.getLeavesOfType("markdown").length,
+    );
+    await browser.execute((selector) => {
+      document.querySelector<HTMLInputElement>(selector)?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          metaKey: true,
+          ctrlKey: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    }, ".pane-search-modal .search-input-container input");
+    await browser.waitUntil(
+      async () =>
+        (await browser.executeObsidian(
+          ({ app }) => app.workspace.getLeavesOfType("markdown").length,
+        )) > before,
+      { timeoutMsg: "Mod+Enter did not open a new tab" },
+    );
+  });
 });
