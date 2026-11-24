@@ -28,10 +28,6 @@ export class PaneSearchSettingTab extends PluginSettingTab {
             render: () => {},
           },
           {
-            name: s.showFilePath,
-            control: { type: "toggle", key: "showFilePath" },
-          },
-          {
             name: s.showInstructions,
             control: { type: "toggle", key: "showInstructions" },
           },
@@ -46,7 +42,6 @@ export class PaneSearchSettingTab extends PluginSettingTab {
 
   override async setControlValue(key: string, value: unknown): Promise<void> {
     (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
-    if (key === "showFilePath") this.plugin.updateFilePathVisibility();
     await this.plugin.saveSettings();
   }
 }

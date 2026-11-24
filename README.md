@@ -29,7 +29,7 @@ Both **Floating Search** and this plugin change the same parts of Obsidian and a
 
 Settings are stored per plugin, so nothing carries over automatically. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Pane Search").
 
-This plugin is much smaller than Floating Search: it only has the global search modal. The quick search (double-Shift), saved searches, hidden folders, filter bar, split/tab/window views and the operator and current-file commands are not included.
+This plugin is much smaller than Floating Search: it only has the global search modal. The quick search (double-Shift), saved searches, hidden folders, filter bar, split/tab/window views, the file-path display, the right-click menu items and the operator and current-file commands are not included.
 
 ![float-search.png](media/img.png)
 
@@ -58,9 +58,8 @@ This plugin is much smaller than Floating Search: it only has the global search 
         - Use Alt+mouse click to open the file and close the popup;
     - When no file is being previewed:
         - Clicking a search result with the mouse will automatically close the popup and navigate to the file, and other behavior is the same as Obsidian's default behavior;
-4. **The right-click context menu can quickly search the selected text**;
-5. **There is a default `obsidian://fs?query=xxxxxx` URI command, which you can use to invoke Pane Search from external sources**;
-6. **When you click to navigate within the previewed file page, the current previewed file page will be automatically replaced**.
+4. **There is a default `obsidian://fs?query=xxxxxx` URI command, which you can use to invoke Pane Search from external sources**;
+5. **When you click to navigate within the previewed file page, the current previewed file page will be automatically replaced**.
 
 ---
 
@@ -85,15 +84,14 @@ This plugin is much smaller than Floating Search: it only has the global search 
         - 用 Alt+鼠标来打开文件且关闭弹窗；
     - 当不存在文件在预览中时：
         - 用鼠标点击搜索结果自动关闭弹窗且跳转文件夹，其它与 Obsidian 的默认行为一样；
-4. **右键菜单可以快速搜索选中的文本**；
-5. **有一个默认的 `obsidian://fs?query=xxxxxx` 的 URI 命令，你可以用这个命令来从外部唤起 Pane Search**
-6. **当你在预览文件页面中点击跳转时，会自动覆盖当前的预览文件页面**。
+4. **有一个默认的 `obsidian://fs?query=xxxxxx` 的 URI 命令，你可以用这个命令来从外部唤起 Pane Search**
+5. **当你在预览文件页面中点击跳转时，会自动覆盖当前的预览文件页面**。
 
 ---
 
 ## Settings
 
-- **Show file path** and **Show instructions** (also in the search panel's options inside the modal).
+- **Show instructions** shows the key hints under the modal.
 - Obsidian's own sort order, collapse, extra context, explain and match-case toggles are remembered between sessions. The query itself is never saved.
 
 Requires Obsidian 1.13 or later.

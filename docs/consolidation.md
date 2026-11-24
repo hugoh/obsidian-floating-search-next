@@ -11,7 +11,8 @@ provenance record.
 > **Status.** Most of what is recorded below was later removed to narrow the plugin to
 > the global search modal: the CMDK quick search and its query-syntax engine, saved
 > searches, exclusions, the filter bar and regex mode, quick create, the split / tab /
-> window / sidebar views, the operator commands, and the `setState` re-route. Entries
+> window / sidebar views, the operator commands, the `setState` re-route, the file-path display, and the
+> editor and file context menu items. Entries
 > that mention those are kept as provenance only. The modal, the embedded leaf, the
 > i18n scaffolding and the lifecycle fixes remain. The history is in the repository.
 

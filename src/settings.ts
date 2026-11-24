@@ -17,7 +17,6 @@ export interface SearchState extends Record<string, unknown> {
 
 export interface PaneSearchSettings {
   searchViewState: SearchState;
-  showFilePath: boolean;
   showInstructions: boolean;
 }
 
@@ -39,7 +38,6 @@ export const DEFAULT_SETTINGS: PaneSearchSettings = {
     query: "",
     sortOrder: "alphabetical",
   },
-  showFilePath: false,
   showInstructions: true,
 };
 
@@ -80,7 +78,6 @@ export function sanitizeSettings(raw: unknown): PaneSearchSettings {
   const d = DEFAULT_SETTINGS;
   return {
     searchViewState: sanitizeViewState(data.searchViewState),
-    showFilePath: bool(data.showFilePath, d.showFilePath),
     showInstructions: bool(data.showInstructions, d.showInstructions),
   };
 }

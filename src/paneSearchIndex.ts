@@ -4,21 +4,16 @@ import {
   type DragManager,
   debounce,
   Editor,
-  Menu,
   type ObsidianProtocolData,
   type OpenViewState,
   Plugin,
-  type SearchResultDom,
-  type SearchView,
-  setIcon,
-  type TAbstractFile,
   TFile,
   View,
   Workspace,
   WorkspaceLeaf,
 } from "obsidian";
 import { strings } from "./i18n";
-import { EmbeddedView, isEmbeddedLeaf } from "./leafView";
+import { isEmbeddedLeaf } from "./leafView";
 import { PaneSearchModal } from "./nativeModal";
 import {
   DEFAULT_SETTINGS,
@@ -73,21 +68,12 @@ export default class PaneSearchPlugin extends Plugin {
     this.initState();
 
     this.registerIcons();
-    this.registerEvent(
-      this.app.workspace.on("window-open", () =>
-        this.updateFilePathVisibility(),
-      ),
-    );
-
     this.registerObsidianURIHandler();
     this.registerObsidianCommands();
-    this.registerEditorMenuHandler();
-    this.registerContextMenuHandler();
 
     this.addRibbonIcon("pane-search-window", strings().ribbonSearch, () =>
       this.initModal({ ...this.state, query: "" }),
     );
-    this.updateFilePathVisibility();
     this.addSettingTab(new PaneSearchSettingTab(this.app, this));
   }
 
@@ -105,7 +91,6 @@ export default class PaneSearchPlugin extends Plugin {
     this.patched = true;
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
-    this.patchVchildren();
     this.patchDragManager();
     this.patchEditorHighlights();
   }
@@ -145,19 +130,6 @@ export default class PaneSearchPlugin extends Plugin {
         }),
       }),
     );
-  }
-
-  updateFilePathVisibility() {
-    const { showFilePath } = this.settings;
-    for (const win of EmbeddedView.activeWindows(this)) {
-      win.document.body.toggleClass("show-file-path", showFilePath);
-    }
-  }
-
-  changeFilePathVisibility() {
-    this.settings.showFilePath = !this.settings.showFilePath;
-    this.updateFilePathVisibility();
-    this.applySettingsUpdate();
   }
 
   initState() {
@@ -323,57 +295,6 @@ export default class PaneSearchPlugin extends Plugin {
     );
   }
 
-  patchVchildren() {
-    const patchSearchDom = () => {
-      const searchView = this.app.workspace.getLeavesOfType("search")[0]
-        ?.view as SearchView | undefined;
-      if (!searchView) return false;
-
-      const domPrototype = Object.getPrototypeOf(
-        searchView.dom,
-      ) as SearchResultDom;
-
-      this.register(
-        around(domPrototype, {
-          stopLoader(old) {
-            return function (this: SearchResultDom) {
-              old.call(this);
-              this.vChildren?.children?.forEach((child) => {
-                if (child.file && !child.pathEl) {
-                  const path = child.file.parent?.path || "/";
-                  const pathEl = createDiv({
-                    cls: "search-result-file-path",
-                  });
-                  const pathIconEl = pathEl.createDiv({
-                    cls: "search-result-file-path-icon",
-                  });
-                  setIcon(pathIconEl, "folder");
-                  pathEl.createDiv({
-                    cls: "search-result-file-path-text",
-                    text: path,
-                  });
-                  child.pathEl = pathEl;
-                  child.containerEl
-                    .find(".search-result-file-title")
-                    ?.prepend(pathEl);
-                }
-              });
-            };
-          },
-        }),
-      );
-      return true;
-    };
-    this.app.workspace.onLayoutReady(() => {
-      if (!patchSearchDom()) {
-        const evt = this.app.workspace.on("layout-change", () => {
-          patchSearchDom() && this.app.workspace.offref(evt);
-        });
-        this.registerEvent(evt);
-      }
-    });
-  }
-
   patchDragManager() {
     const manager = this.app.dragManager;
     if (!manager) return;
@@ -408,14 +329,6 @@ export default class PaneSearchPlugin extends Plugin {
 
   registerObsidianCommands() {
     this.addCommand({
-      id: "show-or-hide-file-path",
-      name: strings().cmdShowHideFilePath,
-      callback: () => {
-        this.changeFilePathVisibility();
-      },
-    });
-
-    this.addCommand({
       id: "search-obsidian-globally",
       name: strings().cmdSearchGlobally,
       callback: () => this.initModal({ ...this.state, query: "" }),
@@ -426,68 +339,6 @@ export default class PaneSearchPlugin extends Plugin {
       name: strings().cmdSearchGloballyState,
       callback: () => this.initModal(this.state),
     });
-  }
-
-  registerEditorMenuHandler() {
-    this.registerEvent(
-      this.app.workspace.on("editor-menu", (menu: Menu, editor: Editor) => {
-        if (!editor) {
-          return;
-        }
-        if (editor.getSelection().length === 0) {
-          return;
-        }
-        const selection = editor.getSelection().trim();
-        const searchWord =
-          selection.length > 8
-            ? `${selection.slice(0, 3)}...${selection.slice(-3)}`
-            : selection;
-
-        menu.addItem((item) => {
-          // Add sub menu
-          item
-            .setTitle(strings().menuSearchInPane(searchWord))
-            .setIcon("search")
-            .onClick(() => this.initModal({ ...this.state, query: selection }));
-        });
-      }),
-    );
-  }
-
-  registerContextMenuHandler() {
-    this.registerEvent(
-      this.app.workspace.on(
-        "file-menu",
-        (
-          menu: Menu,
-          file: TAbstractFile,
-          _source: string,
-          leaf?: WorkspaceLeaf,
-        ) => {
-          const popover = leaf ? EmbeddedView.forLeaf(leaf) : undefined;
-          if (file instanceof TFile && !popover && !leaf) {
-            menu.addItem((item) => {
-              item
-                .setIcon("popup-open")
-                .setTitle(strings().menuOpenInPanePreview)
-                .onClick(async () => {
-                  if (this.modal) {
-                    await this.modal.initFileView(file, undefined);
-
-                    return;
-                  }
-
-                  this.initModal({ ...this.state, query: "" });
-                  window.setTimeout(() => {
-                    void this.modal.initFileView(file, undefined);
-                  }, 20);
-                })
-                .setSection?.("open");
-            });
-          }
-        },
-      ),
-    );
   }
 
   registerIcons() {

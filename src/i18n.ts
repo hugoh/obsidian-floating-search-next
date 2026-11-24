@@ -26,14 +26,10 @@ export function getLocale(): Locale {
 export interface Strings {
   pluginIntro: string;
   tabGeneral: string;
-  showFilePath: string;
   showInstructions: string;
   ribbonSearch: string;
   cmdSearchGlobally: string;
   cmdSearchGloballyState: string;
-  cmdShowHideFilePath: string;
-  menuSearchInPane: (query: string) => string;
-  menuOpenInPanePreview: string;
   instrNavigate: string;
   instrCollapse: string;
   instrOpenBackground: string;
@@ -47,14 +43,10 @@ const EN: Strings = {
   pluginIntro:
     "Use Obsidian's built-in search in a floating modal, with a preview pane.",
   tabGeneral: "General",
-  showFilePath: "Show file path",
   showInstructions: "Show instructions",
   ribbonSearch: "Search obsidian globally",
   cmdSearchGlobally: "Search obsidian globally",
   cmdSearchGloballyState: "Search Obsidian Globally (With Last State)",
-  cmdShowHideFilePath: "Show/hide file path",
-  menuSearchInPane: (query) => `Search "${query}" in Pane Search`,
-  menuOpenInPanePreview: "Open in Pane Preview",
   instrNavigate: "Navigate",
   instrCollapse: "Collapse/Expand",
   instrOpenBackground: "Open in background",
@@ -67,14 +59,10 @@ const EN: Strings = {
 const ZH: Strings = {
   pluginIntro: "在带预览窗格的浮动弹窗中使用 Obsidian 自带搜索。",
   tabGeneral: "常规",
-  showFilePath: "显示文件路径",
   showInstructions: "显示按键说明",
   ribbonSearch: "全局搜索",
   cmdSearchGlobally: "全局搜索",
   cmdSearchGloballyState: "全局搜索（保留上次关键字）",
-  cmdShowHideFilePath: "显示/隐藏文件路径",
-  menuSearchInPane: (query) => `用窗格搜索查找「${query}」`,
-  menuOpenInPanePreview: "在窗格预览中打开",
   instrNavigate: "切换结果",
   instrCollapse: "折叠/展开",
   instrOpenBackground: "后台打开",

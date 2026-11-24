@@ -127,7 +127,6 @@ declare module "obsidian" {
     matches?: unknown[];
     collapsible?: boolean;
     collapseEl?: HTMLElement;
-    pathEl?: HTMLElement;
     setCollapse(collapse: boolean): void;
   }
 
@@ -135,12 +134,6 @@ declare module "obsidian" {
     focusedItem: SearchResultItem | null;
     setFocusedItem(item: SearchResultItem | null | undefined): void;
     resultDomLookup: Map<TFile, SearchResultItem>;
-    vChildren?: {
-      children?: SearchResultItem[];
-      _children?: SearchResultItem[];
-    };
-    children?: SearchResultItem[];
-    stopLoader(): void;
   }
 
   interface ViewRegistry {

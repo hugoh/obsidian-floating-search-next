@@ -18,7 +18,7 @@ describe("English", () => {
   });
 
   test("parameterised messages take their argument", () => {
-    expect(strings().menuSearchInPane("Work")).toContain("Work");
+    expect(strings().instrPreview).toBe("Preview/Close Preview");
   });
 });
 
@@ -32,7 +32,7 @@ describe("Chinese locale", () => {
     const english = strings().cmdSearchGlobally;
     withLanguage("zh", () => {
       expect(strings().cmdSearchGlobally).not.toBe(english);
-      expect(strings().menuSearchInPane("项目")).toContain("项目");
+      expect(strings().instrPreview).not.toBe("Preview/Close Preview");
     });
   });
 

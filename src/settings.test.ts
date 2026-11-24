@@ -10,23 +10,20 @@ describe("sanitizeSettings", () => {
   );
 
   test("keeps valid values", () => {
-    expect(
-      sanitizeSettings({ showFilePath: true, showInstructions: false }),
-    ).toMatchObject({ showFilePath: true, showInstructions: false });
+    expect(sanitizeSettings({ showInstructions: false }).showInstructions).toBe(
+      false,
+    );
   });
 
   test("replaces values of the wrong type", () => {
-    const settings = sanitizeSettings({
-      showFilePath: "yes",
-      showInstructions: 0,
-    });
-    expect(settings.showFilePath).toBe(DEFAULT_SETTINGS.showFilePath);
+    const settings = sanitizeSettings({ showInstructions: 0 });
     expect(settings.showInstructions).toBe(DEFAULT_SETTINGS.showInstructions);
   });
 
   test("drops settings of features that no longer exist", () => {
     const settings = sanitizeSettings({
       showFilePath: true,
+      showInstructions: false,
       defaultViewType: "tab",
       cmdkTriggerKey: "Alt",
       excludeFolders: ["Archive"],
@@ -36,7 +33,8 @@ describe("sanitizeSettings", () => {
     expect(Object.keys(settings).sort()).toEqual(
       Object.keys(DEFAULT_SETTINGS).sort(),
     );
-    expect(settings.showFilePath).toBe(true);
+    expect(settings).not.toHaveProperty("showFilePath");
+    expect(settings.showInstructions).toBe(false);
   });
 
   test("never restores a saved query, whatever data.json holds", () => {

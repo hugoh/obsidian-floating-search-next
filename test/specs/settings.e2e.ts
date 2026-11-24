@@ -66,7 +66,6 @@ describe("Settings", () => {
   it("recovers from invalid saved settings instead of failing to load", async () => {
     await browser.executeObsidian(async ({ app }, id) => {
       await app.plugins.plugins[id].saveData({
-        showFilePath: "yes",
         showInstructions: 3,
         defaultViewType: "hologram",
         savedSearches: [null],
@@ -78,7 +77,7 @@ describe("Settings", () => {
       ({ app }, id) => app.plugins.plugins[id].settings,
       PLUGIN_ID,
     );
-    expect(settings.showFilePath).toBe(false);
+    expect(settings.showFilePath).toBeUndefined();
     expect(settings.showInstructions).toBe(true);
     expect(settings.defaultViewType).toBeUndefined();
     expect(settings.savedSearches).toBeUndefined();

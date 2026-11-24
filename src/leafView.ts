@@ -112,8 +112,6 @@ export class EmbeddedView extends nosuper(HoverPopover) {
 
   originalPath: string; // these are kept to avoid adopting targets w/a different link
   originalLinkText: string;
-  static activePopover?: EmbeddedView;
-
   static activeWindows(plugin: PaneSearchPlugin) {
     const windows: Window[] = [window];
     const { floatingSplit } = plugin.app.workspace;
@@ -147,24 +145,6 @@ export class EmbeddedView extends nosuper(HoverPopover) {
     )
       .map((el) => popovers.get(el)!)
       .filter((he) => he);
-  }
-
-  static forLeaf(leaf: WorkspaceLeaf | undefined) {
-    // leaf can be null such as when right clicking on an internal link
-    const el = leaf?.containerEl.matchParent(".fs-leaf-view");
-    return el ? popovers.get(el) : undefined;
-  }
-
-  static iteratePopoverLeaves(
-    ws: Workspace,
-    cb: (leaf: WorkspaceLeaf) => boolean | void,
-    plugin: PaneSearchPlugin,
-  ) {
-    for (const popover of this.activePopovers(plugin)) {
-      if (popover.rootSplit && ws.iterateLeaves(cb, popover.rootSplit))
-        return true;
-    }
-    return false;
   }
 
   hoverEl: HTMLElement = this.document.defaultView!.createDiv({
