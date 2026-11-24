@@ -33,60 +33,6 @@ export async function waitForVaultIndexed() {
   );
 }
 
-export async function openCmdk(initialFilters?: string[]) {
-  await waitForPlugin();
-  await browser.executeObsidian(
-    ({ app }, id, filters) => {
-      const plugin = app.plugins.plugins[id];
-      plugin.openCmdkModal(filters);
-    },
-    PLUGIN_ID,
-    initialFilters,
-  );
-  const input = browser.$(".pane-search-cmdk .prompt-input");
-  await input.waitForExist();
-  return input;
-}
-
-export async function updateSettings(patch: Record<string, unknown>) {
-  await waitForPlugin();
-  await browser.executeObsidian(
-    ({ app }, id, values) => {
-      const plugin = app.plugins.plugins[id];
-      Object.assign(plugin.settings, values);
-    },
-    PLUGIN_ID,
-    patch,
-  );
-}
-
-export async function resultTexts(): Promise<string[]> {
-  return browser.execute(() =>
-    Array.from(
-      document.querySelectorAll<HTMLElement>(
-        ".pane-search-cmdk .suggestion-item",
-      ),
-      (item) => item.innerText,
-    ),
-  );
-}
-
-export async function hasResult(text: string): Promise<boolean> {
-  return (await resultTexts()).some((row) => row.includes(text));
-}
-
-export async function waitForResult(text: string) {
-  await browser.waitUntil(() => hasResult(text), {
-    timeoutMsg: `"${text}" never appeared in the results`,
-  });
-}
-
-export async function activePath(): Promise<string | undefined> {
-  return browser.executeObsidian(
-    ({ app }) => app.workspace.getActiveFile()?.path,
-  );
-}
-
 export async function closeModals() {
   await browser.keys("Escape");
 }

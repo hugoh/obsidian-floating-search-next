@@ -1,23 +1,15 @@
 import {
   debounce,
-  Keymap,
   Modal,
   type SearchResultItem,
   type SearchView,
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
-import {
-  applyNativeResultFilters,
-  bindNativeRegexSearch,
-  mountFilterBar,
-  watchNativeSearchResults,
-} from "./filterBar";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { type EmbeddedView, spawnLeafView } from "./leafView";
 import type PaneSearchPlugin from "./paneSearchIndex";
-import { noteNameFromText } from "./quickCreate";
 import type { SearchState } from "./settings";
 
 function createInstructionElement(
@@ -59,8 +51,6 @@ export class PaneSearchModal extends Modal {
   private fileState: PreviewState | undefined;
 
   private searchCtnEl: HTMLElement;
-  private unwatchFilters: (() => void) | null = null;
-  private unbindNativeQuery: (() => void) | null = null;
   private instructionsEl: HTMLElement;
   private fileEl: HTMLElement;
   private viewType: string;
@@ -105,7 +95,6 @@ export class PaneSearchModal extends Modal {
       this.searchLeaf?.detach();
       return;
     }
-    this.initFilterBar();
     this.initInput();
     this.initContent();
   }
@@ -117,18 +106,12 @@ export class PaneSearchModal extends Modal {
     this.inputCleanup = null;
     this.clearPreview();
     const { contentEl } = this;
-    this.unwatchFilters?.();
-    this.unwatchFilters = null;
-    this.unbindNativeQuery?.();
-    this.unbindNativeQuery = null;
 
     if (this.searchLeaf) {
       const saved = this.searchLeaf.view.getState();
       this.cb({
         ...saved,
-        query: this.plugin.stripExclusion(
-          typeof saved.query === "string" ? saved.query : "",
-        ),
+        query: typeof saved.query === "string" ? saved.query : "",
       });
     }
 
@@ -170,12 +153,6 @@ export class PaneSearchModal extends Modal {
     );
     createInstructionElement(
       instructionsEl,
-      "pane-search-modal-instructions-ctrl-enter",
-      "Ctrl+↵",
-      s.instrCreateIfMissing,
-    );
-    createInstructionElement(
-      instructionsEl,
       "pane-search-modal-instructions-tab",
       "Tab/Shift+Tab",
       s.instrPreview,
@@ -210,15 +187,11 @@ export class PaneSearchModal extends Modal {
     this.searchEmbeddedView = embeddedView;
 
     this.searchLeaf.setPinned(true);
-    const initialQuery = this.plugin.withExclusion(this.state.query ?? "");
-    const initialState = {
-      ...this.state,
-      query: initialQuery,
-      matchingCase: this.plugin.settings.filterMatchCase,
-    };
+    const initialQuery = this.state.query ?? "";
+    const initialState = { ...this.state, query: initialQuery };
     await this.searchLeaf.setViewState({
       type: "search",
-      state: { ...initialState, triggerBySelf: true },
+      state: initialState,
     });
 
     window.setTimeout(
@@ -239,63 +212,13 @@ export class PaneSearchModal extends Modal {
     const view = this.searchLeaf.view as SearchView;
     const typed = view.searchComponent?.inputEl?.value;
     if (!typed || typed === initialQuery) {
-      await view.setState(
-        { ...initialState, triggerBySelf: true },
-        { history: false },
-      );
+      await view.setState(initialState, { history: false });
     }
     if (this.closed) return;
     const inputEl = view.searchComponent?.inputEl;
     if (inputEl) {
       if (this.state.current) inputEl.setSelectionRange(0, 0);
       else inputEl.setSelectionRange(0, this.state.query?.length ?? 0);
-    }
-  }
-
-  private initFilterBar() {
-    const searchRow = this.searchCtnEl.querySelector(".search-row");
-    if (searchRow) {
-      mountFilterBar(searchRow as HTMLElement, this.plugin, () =>
-        this.onFilterChange(),
-      );
-    }
-    const view = this.searchLeaf.view as SearchView;
-    this.unbindNativeQuery = bindNativeRegexSearch(view, this.plugin, () => {
-      this.debouncedAutoPreview.cancel();
-      this.clearPreview();
-    });
-    this.syncNativeMatchCase(view);
-    (view as SearchView & { startSearch?: () => void }).startSearch?.();
-    this.unwatchFilters = watchNativeSearchResults(view, this.plugin);
-  }
-
-  private onFilterChange() {
-    this.clearPreview();
-    const view = this.searchLeaf.view as SearchView;
-    this.syncNativeMatchCase(view);
-    (view as SearchView & { startSearch?: () => void }).startSearch?.();
-    applyNativeResultFilters(view, this.plugin);
-  }
-
-  private syncNativeMatchCase(view: SearchView) {
-    const state = view.getState();
-    if (state.matchingCase === this.plugin.settings.filterMatchCase) return;
-    const target = view as SearchView & {
-      setMatchingCase?: (value: boolean) => void;
-    };
-    if (typeof target.setMatchingCase === "function") {
-      target.setMatchingCase(this.plugin.settings.filterMatchCase);
-      return;
-    }
-    if (state.matchingCase !== this.plugin.settings.filterMatchCase) {
-      void view.setState(
-        {
-          ...state,
-          matchingCase: this.plugin.settings.filterMatchCase,
-          triggerBySelf: true,
-        },
-        { history: false },
-      );
     }
   }
 
@@ -372,21 +295,6 @@ export class PaneSearchModal extends Modal {
           currentView.onKeyArrowRightInFocus(e);
           break;
         case "Enter":
-          if (
-            Keymap.isModifier(e, "Mod") &&
-            Keymap.isModifier(e, "Shift") &&
-            !this.focusdItem
-          ) {
-            e.preventDefault();
-            const name = noteNameFromText(
-              this.plugin.stripExclusion(inputEl.value),
-            );
-            if (name) {
-              void this.plugin.app.workspace.openLinkText(name, "", true);
-              this.close();
-            }
-            break;
-          }
           currentView.onKeyEnterInFocus(e);
           if (e.altKey && currentView.dom.focusedItem) {
             this.close();

@@ -35,7 +35,7 @@ Plugin text lives in `src/i18n.ts`, in one typed object per language. English
 
 1. Copy the `EN` block, rename it (for example `JA`) and translate every message.
    Leave key labels such as `Shift+↑↓` alone. Messages that are functions (for
-   example `savedSearchCmd`) keep their arguments.
+   example `menuSearchInPane`) keep their arguments.
 2. Add the language to the `Locale` type and to `TRANSLATIONS`, and teach
    `resolveLocale` its Obsidian language code (`ja`, `fr`, ...). Obsidian reports
    Simplified Chinese as `zh` and Traditional as `zh-TW`.

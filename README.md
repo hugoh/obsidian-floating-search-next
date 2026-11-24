@@ -2,7 +2,7 @@
 
 > **Work in progress.** This project was first positioned as a successor to Floating Search. We are rethinking that framing, so its scope, features and name may change. For now, it is not available in the Obsidian Community plugin store.
 
-Use Obsidian's search in a floating modal, split, tab or pop-out window, with a quick switcher, filters and saved searches.
+Open Obsidian's global search in a floating modal with a preview pane.
 
 ## About this plugin
 
@@ -27,7 +27,9 @@ BRAT also keeps the plugin up to date.
 
 Both **Floating Search** and this plugin change the same parts of Obsidian and answer `obsidian://fs` links, so avoid running them together.
 
-Settings are stored per plugin, so nothing carries over automatically: set your options again and re-add any saved searches and hidden folders. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Pane Search").
+Settings are stored per plugin, so nothing carries over automatically. Commands have new ids, so rebind any hotkeys under **Settings → Hotkeys** (search for "Pane Search").
+
+This plugin is much smaller than Floating Search: it only has the global search modal. The quick search (double-Shift), saved searches, hidden folders, filter bar, split/tab/window views and the operator and current-file commands are not included.
 
 ![float-search.png](media/img.png)
 
@@ -35,16 +37,14 @@ Settings are stored per plugin, so nothing carries over automatically: set your 
 
 ## 使用说明 | Usage
 
-1. **Three main commands**:
+1. **Two commands**:
     - `Search Obsidian Globally`: Searches all global content, and the characters entered will be cleared automatically after each search;
     - `Search Obsidian Globally (With Last State)`: Searches all global content, and the characters entered will be cleared 30 seconds after each search;
-    - `Search In Current File`: Searches the content of the current file;
 2. **When the cursor is focused on the search input box**:
     - Use the up and down arrow keys to switch between search results;
     - When a search result is selected, hold the Shift key and press the up or down arrow keys to expand the results upwards or downwards; when focused on a file name, you can collapse the search results under the current file name;
     - When a search result is selected,
         - Press Enter to open the file in the background;
-        - Press Ctrl+Enter to open a new page in the background and open the file;
         - Press Alt+Enter to open the file and close the popup;
         - Press Ctrl+Shift+Alt+Enter to open the file in a new window and close the popup;
     - When a search result is selected, press Tab to preview the corresponding file in the current popup's right side, and Shift+Tab to close the preview;
@@ -64,16 +64,14 @@ Settings are stored per plugin, so nothing carries over automatically: set your 
 
 ---
 
-1. **三个主要命令**：
+1. **两个命令**：
     - `Search Obsidian Globally`：用于搜索全局的所有内容，每次搜索后的字符都会自动清空；
     - `Search Obsidian Globally (With Last State)`：用于搜索全局的所有内容，每次搜索后的字符都会在三十秒后清空；
-    - `Search In Current File`：用于搜索当前文件的内容；
 2. **当光标聚焦在搜索输入框的时候**：
     - 按上下方向键来切换选择结果；
     - 当有一个搜索结果被选择时，按住 Shift 键再按上下方向键来向上展开或者向下展开结果；当聚焦在文件名上的时候，可以折叠当前文件名下的搜索结果；
     - 当有一个搜索结果被选择时，
         - 按 Enter 来在背景中打开文件；
-        - 按 Ctrl+Enter 则是在背景中打开新页面且打开文件；
         - 按 Alt+Enter 则是打开该文件且关闭弹窗；
         - 按 Ctrl+Shift+Alt+Enter 则是用新窗口打开该文件，且关闭弹窗；
     - 当有一个搜索结果被选择时，按 Tab 来在当前弹窗的右侧预览对应的文件，Shift+Tab 则是关闭预览；
@@ -93,40 +91,10 @@ Settings are stored per plugin, so nothing carries over automatically: set your 
 
 ---
 
-## Features
+## Settings
 
-Everything below is in addition to the usage described above.
-
-### Quick search (CMDK)
-
-- Double-tap `Shift` (configurable) for a quick-switcher across file names, headings and note content, with preview. Previews render the note, which runs code blocks from other plugins (Dataview, Templater); turn off *Preview results automatically* in settings to preview only on `Tab`.
-- Searching is debounced and file bodies are cached by path and modification time, so repeated typing is fast.
-- Chinese/Japanese/Korean IME composition is respected: no query runs until composition ends.
-- Optionally create a timestamped note from the query when nothing matches.
-
-### Filters
-
-- Regular expressions are checked before they run: patterns that can backtrack exponentially (for example `^(a+)+$`) are refused with a notice rather than freezing Obsidian. Some pathological patterns, such as overlapping alternations like `(a|aa)+`, cannot be detected, so avoid pasting untrusted regexes.
-- Filter settings persist across sessions, so a marker ("N filters on", with Reset) shows whenever one is hiding results.
-- Filter bar on both the global search and quick search: include Bases / Canvas, starred notes only, match case, and regular expressions.
-- **Full Obsidian query syntax** in quick search: `tag:`, `path:`, `folder:`, `file:`, properties (`[key::value]`), content operators (`content:`, `task:`, and `line:` / `block:` / `section:`, which need every term in the same line, block or section: `block:(foo bar)`), `-` negation, `"quoted phrases"` and `OR`. Tag matching handles nested tags and tags stored in any frontmatter property.
-
-### Hide from results (exclusions)
-
-- Hide folders and notes from Pane Search results (settings → Filters), picked from your real vault with autocomplete. They are removed from quick search and applied to the global search as `-path:` clauses that are stripped again before the query is saved.
-- This is a convenience filter, **not a privacy control**: it only affects this plugin's results, and the clause is visible and editable in the search box. Obsidian's own search and other views are unaffected.
-
-### Saved searches
-
-- Save a name plus any query. Each one appears as a filter chip in quick search and as a `Saved search: <name>` command. You can also save the current query from quick search.
-
-### Languages and settings
-
-- The UI follows Obsidian's language: English and 简体中文 are included; Traditional Chinese and other languages show English. Translations are welcome (see `CONTRIBUTING.md`). Settings are organised in tabs: General, Quick Search, Quick Create and Filters.
-
-### Fixes
-
-- Native file opening, regex queries and preview lifecycle (stale previews, late focus after closing); a crash when highlighting inside embedded previews; `setState` re-entry loops and memory leaks.
+- **Show file path** and **Show instructions** (also in the search panel's options inside the modal).
+- Obsidian's own sort order, collapse, extra context, explain and match-case toggles are remembered between sessions. The query itself is never saved.
 
 Requires Obsidian 1.13 or later.
 
@@ -149,8 +117,8 @@ This project is licensed under the **GNU General Public License v3.0** (see [LIC
 | Source | Contribution | License |
 |---|---|---|
 | [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search) (Boninall) | The original plugin | GPL-3.0 |
-| [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | IME guard, filter bar (type / starred / case / regex), i18n, tabbed settings, preview and file-opening fixes, regression tests | GPL-3.0 |
-| [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | Exclusions, saved searches, query-syntax engine, CMDK performance, stability fixes | GPL-3.0 |
+| [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | i18n, preview and file-opening fixes, regression tests | GPL-3.0 |
+| [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | Stability fixes | GPL-3.0 |
 | [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | Embedded leaf implementation (`src/leafView.ts`) | MIT |
 | [pjeby/monkey-around](https://github.com/pjeby/monkey-around) | Method patching (bundled dependency) | ISC |
 

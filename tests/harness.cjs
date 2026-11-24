@@ -209,7 +209,6 @@ function createHarness() {
         if (id === './leafView') return leafModule;
         if (id === './i18n') return { strings: () => ({}), t: (key) => key };
         if (id.startsWith('./')) return load(id.slice(2));
-        if (id === 'safe-regex2') return require('safe-regex2');
         if (id === 'monkey-around') return require('monkey-around');
         throw new Error(`Unexpected dependency: ${id}`);
       },
@@ -239,17 +238,11 @@ function createHarness() {
   const plugin = {
     app,
     settings: {
-      showInstructions: false, filterIncludeBases: true, filterIncludeCanvas: true,
-      filterStarredOnly: false, filterMatchCase: false, filterUseRegex: false,
-      cmdkQuickCreate: false, excludeFolders: [], excludeFiles: [], savedSearches: [],
+      showInstructions: false,
     },
     async saveSettings() {},
-    normalizePath: (p) => String(p).replace(/^\/+|\/+$/g, ''),
-    withExclusion: (q) => q,
-    stripExclusion: (q) => q,
-
   };
-  return { ...load('paneSearchIndex'), PaneSearchCmdkModal: load('cmdkModal').PaneSearchCmdkModal, PaneSearchModal: load('nativeModal').PaneSearchModal, filters: load('filterBar'), clock, app, plugin,
+  return { ...load('paneSearchIndex'), PaneSearchModal: load('nativeModal').PaneSearchModal, clock, app, plugin,
     mainLeaf, makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 
