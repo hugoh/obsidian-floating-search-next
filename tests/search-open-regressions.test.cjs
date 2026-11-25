@@ -158,3 +158,44 @@ test('a modal that cannot build its search view says so and closes', async () =>
   assert.equal(h.consoleErrors.length, 1);
   assert.equal(modal.isOpen, false, 'a half-built modal is not left on screen');
 });
+
+test('typing before the state settles leaves the caret where the typing put it', async () => {
+  const h = createHarness();
+  const leaf = h.makeLeaf();
+  const selections = [];
+  leaf.view.searchComponent = { inputEl: { value: 'pin', setSelectionRange: (...range) => selections.push(range) } };
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: '' });
+  await modal.initSearchView(new ElementStub());
+  await h.clock.tick(0);
+  assert.deepEqual(selections, []);
+});
+
+test('the query is still selected when nothing was typed meanwhile', async () => {
+  const h = createHarness();
+  const leaf = h.makeLeaf();
+  const selections = [];
+  leaf.view.searchComponent = { inputEl: { value: '', setSelectionRange: (...range) => selections.push(range) } };
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  await modal.initSearchView(new ElementStub());
+  await h.clock.tick(0);
+  assert.deepEqual(selections, [[0, 6]]);
+});
+
+test('closing before the search view took its state reports no state to save', async () => {
+  const h = createHarness();
+  const results = [];
+  const modal = new h.SearchOpenModal((closing) => results.push(closing), h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  modal.onClose();
+  assert.deepEqual(results, [undefined]);
+
+  const settled = [];
+  const later = new h.SearchOpenModal((closing) => settled.push(closing), h.plugin, { query: 'needle' });
+  h.leafModule.nextLeaf = h.makeLeaf();
+  await later.initSearchView(new ElementStub());
+  later.onClose();
+  assert.equal(settled.length, 1);
+  assert.equal(settled[0].state.query, 'needle');
+});

@@ -6,7 +6,7 @@ export interface TestPlugin {
   settings: Record<string, unknown> & {
     searchViewState: { sortOrder?: string };
   };
-  state: Record<string, unknown>;
+  state: Record<string, unknown> & { sortOrder?: string };
   initModal(state: Record<string, unknown>, caret?: unknown): void;
   modal: {
     cb: (...args: unknown[]) => void;

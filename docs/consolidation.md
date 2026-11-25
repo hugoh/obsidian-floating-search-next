@@ -91,6 +91,11 @@ Fixes made after the plugin was narrowed:
   to skip a file only an embedded leaf showed, and the Recent Files plugin's
   `shouldAddFile` is wrapped while the modal is open (e2e; the plugin is represented by
   a stand-in, since it is not in the test vault).
+- Text typed in the instant before the delayed state was applied had its caret moved to
+  the start, and a modal closed before the search view took its state saved the view's
+  defaults over the remembered sort order and options. The selection is now left alone
+  once the user has typed, and nothing is saved from a view that never took its state
+  (node tests, an e2e test for the early close).
 - When Obsidian failed to build the search view or open a preview, the modal was left
   half-built and the only trace was an unhandled rejection in the console. One helper
   now logs the cause and shows a notice; a failed build closes the modal and a failed

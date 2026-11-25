@@ -33,6 +33,12 @@ export interface Caret {
   end: number;
 }
 
+/** What the modal hands back on close, once the search view took its state. */
+export interface ClosingState {
+  state: SearchState;
+  caret: Caret;
+}
+
 /** Where the preview should land: the matched text inside a result row. */
 export interface PreviewState extends Record<string, unknown> {
   match?: { content?: string; matches?: unknown[] };
@@ -46,12 +52,13 @@ export class SearchOpenModal extends Modal {
   searchLeaf: WorkspaceLeaf;
   fileLeaf: WorkspaceLeaf | undefined;
 
-  private cb: (state: SearchState, caret: Caret) => void;
+  private cb: (closing?: ClosingState) => void;
   private state: SearchState;
   private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
   private readonly previewedPaths = new Set<string>();
+  private stateApplied = false;
 
   private searchCtnEl: HTMLElement;
   private fileEl: HTMLElement;
@@ -65,7 +72,7 @@ export class SearchOpenModal extends Modal {
   }, 150);
 
   constructor(
-    cb: (state: SearchState, caret: Caret) => void,
+    cb: (closing?: ClosingState) => void,
     plugin: SearchOpenPlugin,
     state: SearchState,
     caret?: Caret,
@@ -84,6 +91,21 @@ export class SearchOpenModal extends Modal {
       this.reportFailure(error);
       this.close();
     }
+  }
+
+  private closingState(): ClosingState {
+    const saved = this.searchLeaf.view.getState();
+    const inputEl = this.searchInput;
+    return {
+      state: {
+        ...saved,
+        query: typeof saved.query === "string" ? saved.query : "",
+      },
+      caret: {
+        start: inputEl?.selectionStart ?? 0,
+        end: inputEl?.selectionEnd ?? 0,
+      },
+    };
   }
 
   /** Tells the user something went wrong; the details go to the console. */
@@ -120,20 +142,7 @@ export class SearchOpenModal extends Modal {
     this.clearPreview();
     const { contentEl } = this;
 
-    if (this.searchLeaf) {
-      const saved = this.searchLeaf.view.getState();
-      const inputEl = this.searchInput;
-      this.cb(
-        {
-          ...saved,
-          query: typeof saved.query === "string" ? saved.query : "",
-        },
-        {
-          start: inputEl?.selectionStart ?? 0,
-          end: inputEl?.selectionEnd ?? 0,
-        },
-      );
-    }
+    this.cb(this.stateApplied ? this.closingState() : undefined);
 
     this.searchLeaf?.detach();
     this.fileLeaf?.detach();
@@ -183,6 +192,7 @@ export class SearchOpenModal extends Modal {
       type: "search",
       state: initialState,
     });
+    this.stateApplied = true;
 
     window.setTimeout(
       () =>
@@ -205,9 +215,9 @@ export class SearchOpenModal extends Modal {
     if (this.closed) return;
     const view = this.searchLeaf.view as SearchView;
     const typed = this.searchInput?.value;
-    if (!typed || typed === initialQuery) {
-      await view.setState(initialState, { history: false });
-    }
+    // Text the user typed meanwhile owns the input, and the caret with it.
+    if (typed && typed !== initialQuery) return;
+    await view.setState(initialState, { history: false });
     if (this.closed) return;
     const inputEl = this.searchInput;
     if (!inputEl) return;

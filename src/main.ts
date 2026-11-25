@@ -166,11 +166,13 @@ export default class SearchOpenPlugin extends Plugin {
     this.modal?.close();
 
     const modal: SearchOpenModal = new SearchOpenModal(
-      (closing, closingCaret) => {
+      (closing) => {
         if (this.modal === modal) this.modal = undefined;
         releaseRecentFiles();
-        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
-        this.lastCaret = closingCaret;
+        // Closed before the view took its state: there is nothing to remember.
+        if (!closing) return;
+        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing.state };
+        this.lastCaret = closing.caret;
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();
         this.forgetQuery();

@@ -337,6 +337,35 @@ describe("Search & Open modal", () => {
     });
   });
 
+  it("keeps the saved options when the modal closes before it finished opening", async () => {
+    await waitForPlugin();
+    await browser.executeObsidianCommand(
+      `${PLUGIN_ID}:search-obsidian-globally`,
+    );
+    await browser
+      .$(".search-open-modal .search-input-container input")
+      .waitForExist();
+    await browser.executeObsidian(({ app }, id) => {
+      const { modal } = app.plugins.plugins[id];
+      modal.searchLeaf.view.setSortOrder("byModifiedTime");
+      modal.close();
+    }, PLUGIN_ID);
+    const saved = await browser.executeObsidian(({ app }, id) => {
+      const plugin = app.plugins.plugins[id];
+      // Open and close within one task, before the view has taken its state.
+      plugin.initModal({ ...plugin.state, query: "" });
+      plugin.modal.close();
+      return {
+        saved: plugin.settings.searchViewState.sortOrder,
+        remembered: plugin.state.sortOrder,
+      };
+    }, PLUGIN_ID);
+    expect(saved).toEqual({
+      saved: "byModifiedTime",
+      remembered: "byModifiedTime",
+    });
+  });
+
   it("runs the close callback once however often the modal is closed", async () => {
     await waitForPlugin();
     await browser.executeObsidianCommand(
