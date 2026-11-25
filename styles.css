@@ -103,5 +103,5 @@
 
 /* The matched text in the reading-mode preview; Obsidian itself only flashes it. */
 ::highlight(search-open-match) {
-	background-color: var(--text-highlight-bg);
+	background-color: var(--highlight-background, rgba(255, 208, 0, 0.4));
 }

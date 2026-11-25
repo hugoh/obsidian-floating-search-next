@@ -68,6 +68,21 @@ describe("Search & Open modal", () => {
         return highlight ? Array.from(highlight, (range) => String(range)) : [];
       });
 
+    // The registry can hold a mark that the page never draws.
+    const paintedBackground = () =>
+      browser.execute(() => {
+        const highlight = (
+          CSS as unknown as { highlights: Map<string, Iterable<Range>> }
+        ).highlights.get("search-open-match");
+        const element = highlight
+          ? Array.from(highlight)[0]?.startContainer.parentElement
+          : null;
+        return element
+          ? getComputedStyle(element, "::highlight(search-open-match)")
+              .backgroundColor
+          : "";
+      });
+
     async function previewFirstMatch() {
       await searchFor("pineapple");
       await waitForResults();
@@ -87,6 +102,14 @@ describe("Search & Open modal", () => {
       const marked = await markedText();
       expect(marked.length).toBeGreaterThan(0);
       for (const text of marked) expect(text.toLowerCase()).toBe("pineapple");
+    });
+
+    it("is drawn, not just registered", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0);
+      const background = await paintedBackground();
+      expect(background).not.toBe("");
+      expect(background).not.toBe("rgba(0, 0, 0, 0)");
     });
 
     it("is cleared when the modal closes", async () => {
