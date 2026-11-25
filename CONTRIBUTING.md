@@ -22,7 +22,10 @@ bun run build      # typecheck + production bundle
 hk check --all     # everything CI runs
 ```
 
-`test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored) and uses
+`test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored), along with the
+Recent Files community plugin that the recent-files specs run against (installed
+disabled, pinned by `RECENT_FILES_VERSION` in `test/wdio.conf.mts`; Renovate keeps the
+pin current, so a failing recent-files spec after a bump means the plugin changed). It uses
 [wdio-obsidian-service](https://github.com/jesse-r-s-hines/wdio-obsidian-service).
 By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for

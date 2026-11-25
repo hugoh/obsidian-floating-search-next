@@ -89,8 +89,8 @@ Fixes made after the plugin was narrowed:
   and in the Recent Files plugin's. The inherited hook patched a method Obsidian no
   longer has, and the other half held for 1 ms. The recent-file tracker is now patched
   to skip a file only an embedded leaf showed, and the Recent Files plugin's
-  `shouldAddFile` is wrapped while the modal is open (e2e; the plugin is represented by
-  a stand-in, since it is not in the test vault).
+  `shouldAddFile` is wrapped while the modal is open (e2e against the real Recent Files
+  plugin, installed disabled at a version Renovate maintains; node tests for both patches).
 - Text typed in the instant before the delayed state was applied had its caret moved to
   the start, and a modal closed before the search view took its state saved the view's
   defaults over the remembered sort order and options. The selection is now left alone
@@ -121,6 +121,9 @@ Fixes made after the plugin was narrowed:
   see `tests/README.md`), and e2e specs in `test/specs/` that run the built plugin in a
   real Obsidian through `wdio-obsidian-service`. `bun run screenshot` retakes the README
   screenshot from `test/screenshots/` in its own vault.
+- The e2e tests install the Recent Files community plugin (disabled, pinned by
+  `RECENT_FILES_VERSION` in `test/wdio.conf.mts`). A repo-local Renovate custom manager in
+  `.renovaterc.json` reads that constant and bumps it from the plugin's GitHub releases.
 - Package manager is bun and tools are pinned with mise (copied from Search Jump).
   Releases go through release-please and need the GitHub App secrets described in
   `CONTRIBUTING.md`.

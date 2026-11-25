@@ -36,9 +36,13 @@ const recentFiles = () =>
   browser.executeObsidian(({ app }) => app.workspace.getLastOpenFiles());
 
 describe("Recent files", () => {
+  // Each test starts with no note open and empty lists, so an earlier test's
+  // open file cannot show up as a recent one.
   beforeEach(async () => {
     await waitForPlugin();
-    await browser.executeObsidian(({ app }) => {
+    await browser.executeObsidian(async ({ app }) => {
+      app.workspace.detachLeavesOfType("markdown");
+      await new Promise((resolve) => setTimeout(resolve, 150));
       app.workspace.recentFileTracker.lastOpenFiles = [];
     });
   });
@@ -84,41 +88,50 @@ describe("Recent files", () => {
   });
 
   describe("with the Recent Files plugin", () => {
-    const added = () =>
+    const RECENT_FILES = "recent-files-obsidian";
+
+    const listed = () =>
       browser.executeObsidian(
-        ({ app }) =>
+        ({ app }, id) =>
           (
-            app.plugins.plugins["recent-files-obsidian"] as never as {
-              added: string[];
+            app.plugins.plugins[id] as never as {
+              data: { recentFiles: { path: string }[] };
             }
-          ).added,
+          ).data.recentFiles.map((entry) => entry.path),
+        RECENT_FILES,
       );
 
-    // Stands in for the real plugin, which is not part of the test vault: it
-    // adds a file on `file-open` when its `shouldAddFile` agrees.
+    // The plugin is installed disabled (see wdio.conf.mts); it must be running
+    // before the modal opens, because the modal reads it then.
     beforeEach(async () => {
-      await browser.executeObsidian(({ app }) => {
-        const stub = {
-          added: [] as string[],
-          shouldAddFile: (_file: unknown) => true,
-        };
-        (app.plugins.plugins as Record<string, unknown>)[
-          "recent-files-obsidian"
-        ] = stub;
-        const ref = app.workspace.on("file-open", (file) => {
-          if (file && stub.shouldAddFile(file)) stub.added.push(file.path);
-        });
-        (window as unknown as { stubRef: unknown }).stubRef = ref;
-      });
+      await browser.executeObsidian(async ({ app }, id) => {
+        await app.plugins.enablePlugin(id);
+        (
+          app.plugins.plugins[id] as never as {
+            data: { recentFiles: unknown[] };
+          }
+        ).data.recentFiles = [];
+      }, RECENT_FILES);
     });
 
     afterEach(async () => {
-      await browser.executeObsidian(({ app }) => {
-        delete (app.plugins.plugins as Record<string, unknown>)[
-          "recent-files-obsidian"
-        ];
-        const { stubRef } = window as unknown as { stubRef: never };
-        app.workspace.offref(stubRef);
+      await browser.executeObsidian(async ({ app }, id) => {
+        await app.plugins.disablePlugin(id);
+      }, RECENT_FILES);
+    });
+
+    it("lists a file opened the normal way", async () => {
+      // Opening the file that is already active fires no event, so pick another.
+      const target = await browser.executeObsidian(async ({ app }) => {
+        const name =
+          app.workspace.getActiveFile()?.basename === "Other"
+            ? "Banana"
+            : "Other";
+        await app.workspace.openLinkText(name, "", false);
+        return app.workspace.getActiveFile()?.path ?? "";
+      });
+      await browser.waitUntil(async () => (await listed()).includes(target), {
+        timeoutMsg: `the plugin never recorded ${target}, so it is not listening`,
       });
     });
 
@@ -130,7 +143,7 @@ describe("Recent files", () => {
       await closeModal();
       await browser.pause(300);
       expect(
-        (await added()).filter((path) => previewed.includes(path)),
+        (await listed()).filter((path) => previewed.includes(path)),
       ).toEqual([]);
     });
 
@@ -139,7 +152,7 @@ describe("Recent files", () => {
       await waitForResults();
       const opened = await focusFirstResult();
       await browser.keys(["Enter"]);
-      await browser.waitUntil(async () => (await added()).includes(opened), {
+      await browser.waitUntil(async () => (await listed()).includes(opened), {
         timeoutMsg: `${opened} never reached the plugin's list`,
       });
     });
