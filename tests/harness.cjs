@@ -183,14 +183,15 @@ function createHarness() {
     return leaf;
   }
   const leafModule = {
-    spawnLeafView() {
-      const leaf = leafModule.nextLeaf || makeLeaf();
-      leafModule.nextLeaf = undefined;
-      const embedded = { unloaded: false, unload() { this.unloaded = true; } };
-      spawned.push({ leaf, embedded });
-      return [leaf, embedded];
+    EmbeddedView: class {
+      constructor() {
+        this.leaf = leafModule.nextLeaf || makeLeaf();
+        leafModule.nextLeaf = undefined;
+        this.unloaded = false;
+        spawned.push({ leaf: this.leaf, embedded: this });
+      }
+      unload() { this.unloaded = true; }
     },
-    EmbeddedView: class {},
     isEmbeddedLeaf: () => false,
   };
   const sourceRoot = process.env.SEARCH_OPEN_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');

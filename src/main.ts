@@ -62,6 +62,16 @@ function selectMatchedCard(
   canvas.zoomToSelection();
 }
 
+/** Runs `fn` until it has completed once; a run that throws is retried. */
+function once(fn: () => void) {
+  let done = false;
+  return () => {
+    if (done) return;
+    fn();
+    done = true;
+  };
+}
+
 export default class SearchOpenPlugin extends Plugin {
   settings: SearchOpenSettings;
   private state: SearchState;
@@ -103,16 +113,13 @@ export default class SearchOpenPlugin extends Plugin {
 
   // The monkeypatches are only needed once a search is opened, so they are
   // applied on first use rather than at startup.
-  private patched = false;
-  private ensurePatched() {
-    if (this.patched) return;
+  private readonly ensurePatched = once(() => {
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
     this.patchRecentFileTracker();
     this.patchDragManager();
     this.patchEditorHighlights();
-    this.patched = true;
-  }
+  });
 
   // Obsidian's search addon calls removeHighlights()/hasHighlight() on every
   // markdown editor whenever a search runs. Editors created inside the

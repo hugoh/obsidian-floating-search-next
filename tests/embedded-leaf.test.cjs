@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 const { createHarness, ElementStub } = require('./harness.cjs');
 
 function embed(h) {
-  const { spawnLeafView, isEmbeddedLeaf } = h.realLeafView();
+  const { EmbeddedView, isEmbeddedLeaf } = h.realLeafView();
   const target = new ElementStub();
   target.ownerDocument = {};
-  const [leaf, view] = spawnLeafView({ app: h.app }, target);
-  return { leaf, view, target, isEmbeddedLeaf };
+  const view = new EmbeddedView(target, { app: h.app });
+  return { leaf: view.leaf, view, target, isEmbeddedLeaf };
 }
 
 test('the embedded view puts a leaf in its own split inside the target element', () => {
@@ -140,15 +140,10 @@ test('dragging a file closes the modal that was open, not one opened a moment la
 test('a failed patch run is retried on the next open instead of being marked done', () => {
   const h = createHarness();
   let attempts = 0;
-  const plugin = {
-    patched: false,
-    patchWorkspace() { attempts++; throw new Error('boom'); },
-    patchWorkspaceLeaf() {},
-    patchDragManager() {},
-    patchEditorHighlights() {},
-  };
-  assert.throws(() => h.default.prototype.ensurePatched.call(plugin), /boom/);
-  assert.throws(() => h.default.prototype.ensurePatched.call(plugin), /boom/);
+  const plugin = new h.default(h.app, {});
+  plugin.patchWorkspace = () => { attempts++; throw new Error('boom'); };
+  assert.throws(() => plugin.ensurePatched(), /boom/);
+  assert.throws(() => plugin.ensurePatched(), /boom/);
   assert.equal(attempts, 2);
 });
 

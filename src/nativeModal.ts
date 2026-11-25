@@ -11,7 +11,7 @@ import {
 } from "obsidian";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
-import { type EmbeddedView, spawnLeafView } from "./leafView";
+import { EmbeddedView } from "./leafView";
 import type SearchOpenPlugin from "./main";
 import type { SearchState } from "./settings";
 
@@ -65,11 +65,16 @@ export class SearchOpenModal extends Modal {
 
   private closed = false;
   private readonly previews = new LatestQueue();
-  private inputCleanup: (() => void) | null = null;
 
   private debouncedAutoPreview = debounce(() => {
     this.autoPreviewFocusedItem();
   }, 150);
+
+  /** Typing invalidates whatever preview is showing or pending. */
+  private readonly clearPreviewOnInput = () => {
+    this.debouncedAutoPreview.cancel();
+    this.clearPreview();
+  };
 
   constructor(
     cb: (closing?: ClosingState) => void,
@@ -139,8 +144,9 @@ export class SearchOpenModal extends Modal {
   onClose() {
     this.closed = true;
     this.debouncedAutoPreview.cancel();
-    this.inputCleanup?.();
-    this.inputCleanup = null;
+    const inputEl = this.searchInput;
+    inputEl?.removeEventListener("input", this.clearPreviewOnInput);
+    if (inputEl) inputEl.onkeydown = null;
     this.clearPreview();
     const { contentEl } = this;
 
@@ -173,9 +179,8 @@ export class SearchOpenModal extends Modal {
   }
 
   private async initSearchView(contentEl: HTMLElement) {
-    const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, contentEl);
-    this.searchLeaf = createdLeaf;
-    this.searchEmbeddedView = embeddedView;
+    this.searchEmbeddedView = new EmbeddedView(contentEl, this.plugin);
+    this.searchLeaf = this.searchEmbeddedView.leaf;
 
     this.searchLeaf.setPinned(true);
     const initialQuery = this.state.query ?? "";
@@ -227,7 +232,8 @@ export class SearchOpenModal extends Modal {
   }
 
   private get searchInput(): HTMLInputElement | undefined {
-    return (this.searchLeaf.view as SearchView).searchComponent?.inputEl;
+    const view = this.searchLeaf?.view as SearchView | undefined;
+    return view?.searchComponent?.inputEl;
   }
 
   private focusSearchInput() {
@@ -244,15 +250,7 @@ export class SearchOpenModal extends Modal {
       }
       return;
     }
-    const clear = () => {
-      this.debouncedAutoPreview.cancel();
-      this.clearPreview();
-    };
-    inputEl.addEventListener("input", clear);
-    this.inputCleanup = () => {
-      inputEl.removeEventListener("input", clear);
-      inputEl.onkeydown = null;
-    };
+    inputEl.addEventListener("input", this.clearPreviewOnInput);
     inputEl.focus();
     inputEl.onkeydown = (e) => {
       if (e.isComposing || e.key === "Process") {
@@ -527,9 +525,8 @@ export class SearchOpenModal extends Modal {
       }
     };
 
-    const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, this.fileEl);
-    this.fileLeaf = createdLeaf;
-    this.fileEmbeddedView = embeddedView;
+    this.fileEmbeddedView = new EmbeddedView(this.fileEl, this.plugin);
+    this.fileLeaf = this.fileEmbeddedView.leaf;
 
     this.fileLeaf.setPinned(true);
     await this.fileLeaf.openFile(file, {

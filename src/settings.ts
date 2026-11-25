@@ -1,4 +1,4 @@
-export type SortOrder =
+type SortOrder =
   | "byRelevance"
   | "alphabetical"
   | "alphabeticalReverse"
