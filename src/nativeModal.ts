@@ -73,7 +73,15 @@ export class SearchOpenModal extends Modal {
   /** Typing invalidates whatever preview is showing or pending. */
   private readonly clearPreviewOnInput = () => {
     this.debouncedAutoPreview.cancel();
+    const hadPreview = Boolean(this.fileLeaf);
     this.clearPreview();
+    // Detaching the preview leaf makes Obsidian drop focus to the page, which
+    // would swallow the rest of what the user is typing.
+    if (hadPreview) {
+      window.setTimeout(() => {
+        if (!this.closed) this.focusSearchInput();
+      }, 0);
+    }
   };
 
   constructor(

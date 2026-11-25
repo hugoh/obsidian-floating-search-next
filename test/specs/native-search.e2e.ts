@@ -55,6 +55,98 @@ describe("Search & Open modal", () => {
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
   });
 
+  // Obsidian's search addon runs highlight clean-up on markdown editors on
+  // every search. An editor inside the embedded preview once lacked the field
+  // it reads and threw "Field is not present in this state"; the preview is
+  // now reading mode and the crash guard is gone, so this keeps it honest.
+  it("survives a second search while a preview is open", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await focusFirstResult();
+    const preview = ".search-open-modal .search-open-modal-file-ctn";
+    await browser
+      .$(preview)
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+
+    await browser.execute(() => {
+      const seen: string[] = [];
+      const target = window as unknown as { __searchOpenErrors: string[] };
+      target.__searchOpenErrors = seen;
+      window.addEventListener("error", (e) =>
+        seen.push(String(e.error ?? e.message)),
+      );
+      window.addEventListener("unhandledrejection", (e) =>
+        seen.push(String(e.reason)),
+      );
+      const original = console.error.bind(console);
+      console.error = (...args: unknown[]) => {
+        seen.push(args.map(String).join(" "));
+        original(...args);
+      };
+    });
+
+    // Typing over a selected query runs a second search.
+    await browser.execute((selector) => {
+      document.querySelector<HTMLInputElement>(selector)?.select();
+    }, ".search-open-modal .search-input-container input");
+    // One key at a time: the first one closes the preview and focus must
+    // come back to the input before the next arrives.
+    for (const key of "banana") {
+      await browser.keys([key]);
+      await browser.pause(50);
+    }
+    await browser.waitUntil(
+      async () => {
+        const matched = await browser.execute(
+          (selector) =>
+            Array.from(
+              document.querySelectorAll<HTMLElement>(selector),
+              (el) => el.textContent ?? "",
+            ),
+          ".search-open-modal .search-result-file-matched-text",
+        );
+        return matched.length > 0 && matched.every((t) => /banana/i.test(t));
+      },
+      { timeoutMsg: "the second search never replaced the results" },
+    );
+
+    // Preview a result of the second search, then run what the addon runs.
+    await focusFirstResult();
+    await browser.$(preview).waitForExist({ timeoutMsg: "no second preview" });
+    await browser.waitUntil(
+      async () =>
+        browser.executeObsidian(
+          ({ app }, id) =>
+            Boolean(app.plugins.plugins[id].modal.fileLeaf?.view.file),
+          PLUGIN_ID,
+        ),
+      { timeoutMsg: "the second preview never opened a file" },
+    );
+    const thrown = await browser.executeObsidian(({ app }, id) => {
+      const view = app.plugins.plugins[id].modal.fileLeaf?.view as unknown as
+        | { editor?: Record<string, (() => unknown) | undefined> }
+        | undefined;
+      const out: string[] = [];
+      for (const name of ["removeHighlights", "hasHighlight"]) {
+        try {
+          view?.editor?.[name]?.();
+        } catch (error) {
+          out.push(`${name}: ${String(error)}`);
+        }
+      }
+      return out;
+    }, PLUGIN_ID);
+    expect(thrown).toEqual([]);
+
+    const seen = await browser.execute(
+      () =>
+        (window as unknown as { __searchOpenErrors: string[] })
+          .__searchOpenErrors,
+    );
+    expect(seen.filter((m) => /not present in this state/.test(m))).toEqual([]);
+    expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
+  });
+
   it("remembers the sort order chosen in the modal", async () => {
     await waitForPlugin();
     await browser.executeObsidianCommand(
