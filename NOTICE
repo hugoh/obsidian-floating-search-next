@@ -33,8 +33,8 @@ Reviewed but not included: https://github.com/smilingpoplar/Obsidian-Float-Searc
 Third-party code
 ----------------
 
-src/leafView.ts, and the recent-files handling and getRoot patch in
-src/main.ts, are derived from obsidian-hover-editor
+src/leafView.ts, and the getRoot patch in src/main.ts, are derived from
+obsidian-hover-editor
 (https://github.com/nothingislost/obsidian-hover-editor), MIT License:
 
     MIT License

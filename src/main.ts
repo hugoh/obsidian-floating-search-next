@@ -89,6 +89,7 @@ export default class SearchOpenPlugin extends Plugin {
     if (this.patched) return;
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
+    this.patchRecentFileTracker();
     this.patchDragManager();
     this.patchEditorHighlights();
     this.patched = true;
@@ -147,6 +148,7 @@ export default class SearchOpenPlugin extends Plugin {
     const modal: SearchOpenModal = new SearchOpenModal(
       (closing, closingCaret) => {
         if (this.modal === modal) this.modal = undefined;
+        releaseRecentFiles();
         this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
         this.lastCaret = closingCaret;
         this.settings.searchViewState = { ...this.state, query: "" };
@@ -157,6 +159,7 @@ export default class SearchOpenPlugin extends Plugin {
       state,
       caret,
     );
+    const releaseRecentFiles = this.holdBackRecentFiles(modal);
     this.modal = modal;
     modal.open();
   }
@@ -213,7 +216,6 @@ export default class SearchOpenPlugin extends Plugin {
 
   // Used for patch workspaceleaf pinned behaviors
   patchWorkspaceLeaf() {
-    const { app } = this;
     this.register(
       around(WorkspaceLeaf.prototype, {
         getRoot(old) {
@@ -234,36 +236,6 @@ export default class SearchOpenPlugin extends Plugin {
             file: TFile,
             openState?: OpenViewState,
           ) {
-            if (isEmbeddedLeaf(this)) {
-              window.setTimeout(
-                around(Workspace.prototype, {
-                  recordMostRecentOpenedFile(old) {
-                    return function (_file: TFile) {
-                      // Don't update the quick switcher's recent list
-                      if (_file !== file) {
-                        return old.call(this, _file);
-                      }
-                    };
-                  },
-                }),
-                1,
-              );
-              const recentFiles = app.plugins.plugins["recent-files-obsidian"];
-              if (recentFiles) {
-                window.setTimeout(
-                  around(recentFiles, {
-                    shouldAddFile(old) {
-                      return function (_file: TFile) {
-                        // Don't update the Recent Files plugin
-                        return _file !== file && old.call(this, _file);
-                      };
-                    },
-                  }),
-                  1,
-                );
-              }
-            }
-
             const view = old.call(this, file, openState);
             window.setTimeout(() => {
               if (!isEmbeddedLeaf(this) || file.extension !== "canvas") return;
@@ -290,6 +262,49 @@ export default class SearchOpenPlugin extends Plugin {
         },
       }),
     );
+  }
+
+  /**
+   * Obsidian records a file as recent when it stops being the active file, and
+   * the preview leaf becomes the active leaf while it is shown. Leave out a file
+   * that was only ever shown by an embedded leaf.
+   */
+  patchRecentFileTracker() {
+    const { workspace } = this.app;
+    const tracker = workspace.recentFileTracker;
+    if (!tracker) return;
+    let previewed: TFile | null = null;
+    this.register(
+      around(tracker, {
+        onFileOpen: (old) =>
+          function (
+            this: unknown,
+            newFile: TFile | null,
+            oldFile: TFile | null,
+          ) {
+            const skip = oldFile !== null && oldFile === previewed;
+            const active = workspace.getActiveViewOfType(View)?.leaf;
+            previewed = active && isEmbeddedLeaf(active) ? newFile : null;
+            return skip ? undefined : old.call(this, newFile, oldFile);
+          },
+      }),
+    );
+  }
+
+  /**
+   * The Recent Files plugin adds a file on `file-open` when its
+   * `shouldAddFile` agrees. Keep previewed files out of its list while the modal
+   * is open; the returned function ends that.
+   */
+  holdBackRecentFiles(modal: { hasPreviewed(file: TFile): boolean }) {
+    const recentFiles = this.app.plugins.plugins["recent-files-obsidian"];
+    if (!recentFiles) return () => {};
+    return around(recentFiles, {
+      shouldAddFile: (old) =>
+        function (this: unknown, file: TFile) {
+          return !modal.hasPreviewed(file) && old.call(this, file);
+        },
+    });
   }
 
   patchDragManager() {

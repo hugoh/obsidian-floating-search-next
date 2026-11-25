@@ -64,7 +64,9 @@ declare module "obsidian" {
   }
 
   interface Workspace {
-    recordMostRecentOpenedFile(file: TFile): void;
+    recentFileTracker?: {
+      onFileOpen(newFile: TFile | null, oldFile: TFile | null): void;
+    };
     pushUndoHistory(leaf: WorkspaceLeaf, id: string, e: unknown): void;
     floatingSplit: (WorkspaceSplit & { children: WorkspaceContainer[] }) | null;
   }

@@ -29,9 +29,10 @@ renamed identifiers push the share up; treat the numbers as a rough guide, not a
 Since then `leafView.ts` was cut from 627 to about 90 lines, the typings from 299 to
 about 70, and the harness was trimmed, so the upstream share has dropped further.
 
-Hover Editor's code reaches this repository through Floating Search: `leafView.ts`,
-and the recent-files and `getRoot` patches in `main.ts`, are its code (the latter two
-verified against its `popover.ts` and `main.ts`).
+Hover Editor's code reaches this repository through Floating Search: `leafView.ts`
+and the `getRoot` patch in `main.ts` are its code (the patch verified against its
+`main.ts`). Its recent-files hook, also inherited, was removed: it patched a method
+that Obsidian no longer has.
 
 ## Features and where they came from
 
@@ -84,6 +85,14 @@ Fixes made after the plugin was narrowed:
   the wrong note when two share a name; it now uses the clicked row (e2e).
 - Shift+Tab closed the preview with half of what typing does, and its border class
   outlived it (e2e).
+- Files that were only previewed were recorded as recent files, in Obsidian's own list
+  and in the Recent Files plugin's. The inherited hook patched a method Obsidian no
+  longer has, and the other half held for 1 ms. The recent-file tracker is now patched
+  to skip a file only an embedded leaf showed, and the Recent Files plugin's
+  `shouldAddFile` is wrapped while the modal is open (e2e; the plugin is represented by
+  a stand-in, since it is not in the test vault).
+- Enter, or Cmd+Enter, could open the result inside the preview instead of the
+  workspace when Obsidian still counted the preview as the active leaf (e2e).
 - After a plain arrow key Obsidian blurs the search input and focus stayed on the page
   body until the preview finished, so Enter or typing in that window went nowhere
   (e2e).

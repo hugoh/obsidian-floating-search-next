@@ -50,6 +50,7 @@ export class SearchOpenModal extends Modal {
   private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
+  private readonly previewedPaths = new Set<string>();
 
   private searchCtnEl: HTMLElement;
   private fileEl: HTMLElement;
@@ -287,6 +288,12 @@ export class SearchOpenModal extends Modal {
           this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, {
             focus: false,
           });
+          {
+            // Opening it for real makes it a recent file after all.
+            const item = currentView.dom.focusedItem;
+            const file = item?.file ?? item?.parent.file;
+            if (file) this.previewedPaths.delete(file.path);
+          }
           currentView.onKeyEnterInFocus(e);
           if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
             this.close();
@@ -430,8 +437,14 @@ export class SearchOpenModal extends Modal {
     this.modalEl.removeClass("search-open-width");
   }
 
+  /** Whether this file was shown in the preview and not opened since. */
+  hasPreviewed(file: TFile) {
+    return this.previewedPaths.has(file.path);
+  }
+
   async initFileView(file: TFile, state: PreviewState | undefined) {
     if (this.closed) return;
+    this.previewedPaths.add(file.path);
     await this.previews.run(async (isCurrent) => {
       if (this.closed) return;
       await this.renderFileView(file, state, isCurrent);

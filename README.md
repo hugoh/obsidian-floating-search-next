@@ -59,6 +59,10 @@ BRAT also keeps the plugin up to date.
 - **Show instructions** shows the key hints under the modal.
 - Obsidian's own sort order (relevance by default), collapse, extra context, explain and match-case toggles are remembered between sessions. The query itself is never saved.
 
+## Recent files
+
+Previewing is not opening. A file you only preview in the modal is not added to Obsidian's recent files (which the quick switcher uses), nor to the list of the [Recent Files](https://github.com/tgrosinger/recent-files-obsidian) plugin if you use it. A file you open with Enter, or Cmd/Ctrl+Enter, is recorded as usual.
+
 Requires Obsidian 1.15.1 or later.
 
 ## Development
@@ -80,7 +84,7 @@ This project is licensed under the **GNU General Public License v3.0** (see [LIC
 | [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search) (Boninall) and its contributors | The original plugin: the floating modal, the embedded search view and preview, the keyboard navigation and the `obsidian://fs` handler | GPL-3.0 |
 | [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | The composition (IME) guard, the typed localization and its Chinese translation, preview and file-opening lifecycle fixes, and the regression test harness | GPL-3.0 |
 | [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | The crash guard for highlights in embedded previews, and applying the patches on first use | GPL-3.0 |
-| [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`), and the recent-files and `getRoot` patches in `src/main.ts`, all reached through Floating Search | MIT |
+| [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`) and the `getRoot` patch in `src/main.ts`, both reached through Floating Search | MIT |
 | [pjeby/monkey-around](https://github.com/pjeby/monkey-around) | Method patching (bundled dependency) | ISC |
 | [Phosphor Icons](https://phosphoricons.com) | The ribbon icon | MIT |
 

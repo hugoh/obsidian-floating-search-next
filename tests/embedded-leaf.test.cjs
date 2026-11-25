@@ -151,3 +151,50 @@ test('a failed patch run is retried on the next open instead of being marked don
   assert.throws(() => h.default.prototype.ensurePatched.call(plugin), /boom/);
   assert.equal(attempts, 2);
 });
+
+test('the tracker patch skips a file that was only shown by an embedded leaf', () => {
+  const h = createHarness();
+  const collected = [];
+  const tracker = { onFileOpen(_next, previous) { if (previous) collected.push(previous); } };
+  const original = tracker.onFileOpen;
+  h.app.workspace.recentFileTracker = tracker;
+  const uninstallers = [];
+  h.default.prototype.patchRecentFileTracker.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
+  const activate = (embedded) => { h.app.workspace.activeView = { leaf: { embedded } }; };
+  const note = { path: 'note.md' };
+  const previewed = { path: 'previewed.md' };
+  const opened = { path: 'opened.md' };
+
+  activate(true);
+  tracker.onFileOpen(previewed, note);
+  tracker.onFileOpen(null, previewed);
+  assert.deepEqual(collected, [note], 'the note left behind counts, the preview does not');
+
+  activate(false);
+  tracker.onFileOpen(opened, null);
+  tracker.onFileOpen(note, opened);
+  assert.deepEqual(collected, [note, opened], 'a file opened for real is recorded when replaced');
+
+  uninstallers.forEach((fn) => fn());
+  assert.equal(tracker.onFileOpen, original, 'unloading restores the tracker');
+});
+
+test('the Recent Files plugin ignores previewed files only while the modal is open', () => {
+  const h = createHarness();
+  const plugin = { shouldAddFile: () => true };
+  const self = { app: { plugins: { plugins: { 'recent-files-obsidian': plugin } } }, register() {} };
+  const modal = { hasPreviewed: (file) => file.path === 'previewed.md' };
+  const release = h.default.prototype.holdBackRecentFiles.call(self, modal);
+  assert.equal(plugin.shouldAddFile({ path: 'previewed.md' }), false);
+  assert.equal(plugin.shouldAddFile({ path: 'other.md' }), true);
+  release();
+  assert.equal(plugin.shouldAddFile({ path: 'previewed.md' }), true);
+});
+
+test('holding back the Recent Files plugin does nothing when it is not installed', () => {
+  const h = createHarness();
+  const self = { app: { plugins: { plugins: {} } }, register() {} };
+  const release = h.default.prototype.holdBackRecentFiles.call(self, { hasPreviewed: () => true });
+  assert.doesNotThrow(release);
+});
