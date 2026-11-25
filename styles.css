@@ -100,3 +100,8 @@
 		border-bottom: 1px solid var(--background-secondary);
 	}
 }
+
+/* The matched text in the reading-mode preview; Obsidian itself only flashes it. */
+::highlight(search-open-match) {
+	background-color: var(--text-highlight-bg);
+}

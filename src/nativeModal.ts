@@ -13,6 +13,7 @@ import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { EmbeddedView } from "./leafView";
 import type SearchOpenPlugin from "./main";
+import { markMatch } from "./matchHighlight";
 import type { SearchState } from "./settings";
 
 /**
@@ -57,6 +58,7 @@ export class SearchOpenModal extends Modal {
   private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
+  private stopMarkingMatch = () => {};
   private readonly previewedPaths = new Set<string>();
   private stateApplied = false;
 
@@ -413,6 +415,7 @@ export class SearchOpenModal extends Modal {
 
   private clearPreview() {
     this.previews.invalidate();
+    this.stopMarkingMatch();
     this.fileState = undefined;
     this.fileLeaf?.detach();
     this.fileEmbeddedView?.unload();
@@ -455,6 +458,14 @@ export class SearchOpenModal extends Modal {
     });
   }
 
+  private markPreviewMatch(state: PreviewState | undefined) {
+    this.stopMarkingMatch();
+    this.stopMarkingMatch = markMatch(
+      this.fileLeaf?.view.containerEl,
+      state?.match,
+    );
+  }
+
   private async renderFileView(
     file: TFile,
     state: PreviewState | undefined,
@@ -463,6 +474,7 @@ export class SearchOpenModal extends Modal {
     if (this.fileLeaf) {
       await this.openReadOnly(this.fileLeaf, file, state);
       if (this.closed || !isCurrent()) return;
+      this.markPreviewMatch(state);
 
       if (
         this.fileState?.match?.matches?.[0] === state?.match?.matches?.[0] &&
@@ -508,6 +520,7 @@ export class SearchOpenModal extends Modal {
     this.fileLeaf.setPinned(true);
     await this.openReadOnly(this.fileLeaf, file, state);
     if (this.closed || !isCurrent()) return;
+    this.markPreviewMatch(state);
     this.fileState = state;
 
     this.focusSearchInput();

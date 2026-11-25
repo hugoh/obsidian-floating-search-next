@@ -55,6 +55,50 @@ describe("Search & Open modal", () => {
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
   });
 
+  // Reading mode only flashes the matched block for a moment; the match itself
+  // has to stay marked, as it does in an editor.
+  describe("the match in the preview", () => {
+    const markedText = () =>
+      browser.execute(() => {
+        const highlight = (
+          CSS as unknown as {
+            highlights: Map<string, Iterable<{ toString(): string }>>;
+          }
+        ).highlights.get("search-open-match");
+        return highlight ? Array.from(highlight, (range) => String(range)) : [];
+      });
+
+    async function previewFirstMatch() {
+      await searchFor("pineapple");
+      await waitForResults();
+      // The second row is the first match of the first file.
+      await browser.keys(["ArrowDown", "ArrowDown", "Tab"]);
+      await browser
+        .$(".search-open-modal .search-open-modal-file-ctn")
+        .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    }
+
+    it("stays marked after Obsidian's flash has faded", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0, {
+        timeoutMsg: "the matched text was never marked",
+      });
+      await browser.pause(3000);
+      const marked = await markedText();
+      expect(marked.length).toBeGreaterThan(0);
+      for (const text of marked) expect(text.toLowerCase()).toBe("pineapple");
+    });
+
+    it("is cleared when the modal closes", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0);
+      await closeModals();
+      await browser.waitUntil(async () => (await markedText()).length === 0, {
+        timeoutMsg: "the mark outlived the modal",
+      });
+    });
+  });
+
   // Obsidian's search addon runs highlight clean-up on markdown editors on
   // every search. An editor inside the embedded preview once lacked the field
   // it reads and threw "Field is not present in this state"; the preview is
