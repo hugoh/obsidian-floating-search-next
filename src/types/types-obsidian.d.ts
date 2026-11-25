@@ -50,7 +50,6 @@ declare module "obsidian" {
 
   interface WorkspaceLeaf {
     containerEl: HTMLDivElement;
-    activeTime: number;
   }
 
   interface Workspace {

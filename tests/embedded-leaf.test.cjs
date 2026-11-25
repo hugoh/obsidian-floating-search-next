@@ -103,22 +103,6 @@ test('unloading the plugin puts Obsidian\'s own workspace methods back', () => {
   assert.equal(Object.hasOwn(Workspace.prototype, 'setActiveLeaf'), false);
 });
 
-test('an embedded leaf stays pinned, a normal one does not', () => {
-  const h = createHarness();
-  const { WorkspaceLeaf } = h.obsidian;
-  WorkspaceLeaf.prototype.setPinned = function (pinned) { this.pinned = pinned; };
-  const uninstall = h.default.prototype.patchWorkspaceLeaf.call({ app: h.app });
-  h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
-  const leafOf = (embedded) => Object.assign(Object.create(WorkspaceLeaf.prototype), { embedded });
-  const embedded = leafOf(true);
-  embedded.setPinned(false);
-  assert.equal(embedded.pinned, true);
-  const normal = leafOf(false);
-  normal.setPinned(false);
-  assert.equal(normal.pinned, false);
-  uninstall();
-});
-
 test('the tracker patch skips a file that was only shown by an embedded leaf', () => {
   const h = createHarness();
   const collected = [];

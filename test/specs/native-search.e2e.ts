@@ -660,6 +660,77 @@ describe("Search & Open modal", () => {
     expect(await closedTabs()).toBe(before);
   });
 
+  describe("the embedded leaves", () => {
+    async function previewFirstResult() {
+      await searchFor("pineapple");
+      await waitForResults();
+      await browser.keys(["ArrowDown", "Tab"]);
+      await browser
+        .$(".search-open-modal .search-open-modal-file-ctn")
+        .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    }
+
+    it("resolve to the workspace root", async () => {
+      await previewFirstResult();
+      const roots = await browser.executeObsidian(({ app }, id) => {
+        const modal = app.plugins.plugins[id].modal;
+        return [modal.searchLeaf, modal.fileLeaf].map(
+          (leaf) => leaf?.getRoot() === app.workspace.rootSplit,
+        );
+      }, PLUGIN_ID);
+      expect(roots).toEqual([true, true]);
+    });
+
+    it("are never the most recent leaf, even once activated", async () => {
+      await previewFirstResult();
+      const embedded = await browser.executeObsidian(({ app }, id) => {
+        const { fileLeaf } = app.plugins.plugins[id].modal;
+        if (fileLeaf) app.workspace.setActiveLeaf(fileLeaf, { focus: true });
+        const workspace = app.workspace as unknown as {
+          getMostRecentLeaf(): { containerEl: HTMLElement } | null;
+        };
+        return Boolean(
+          workspace
+            .getMostRecentLeaf()
+            ?.containerEl.matches(".search-open-embed .workspace-leaf"),
+        );
+      }, PLUGIN_ID);
+      expect(embedded).toBe(false);
+    });
+
+    it("keep a link clicked in the preview from opening in the workspace", async () => {
+      await waitForPlugin();
+      const files = () =>
+        browser.executeObsidian(({ app }) => {
+          const paths: string[] = [];
+          app.workspace.iterateAllLeaves((leaf) => {
+            const path = (leaf.view as { file?: { path: string } }).file?.path;
+            if (path === "Other.md") paths.push(path);
+          });
+          return paths.length;
+        });
+      await browser.executeObsidian(async ({ app }) => {
+        await app.vault.create("Linker.md", "go to [[Other]] linkprobexyz");
+      });
+      try {
+        await searchFor("linkprobexyz");
+        await waitForResults();
+        await browser.keys(["ArrowDown", "Tab"]);
+        const link = ".search-open-modal-file-ctn a.internal-link";
+        await browser.$(link).waitForExist();
+        const before = await files();
+        await browser.$(link).click();
+        await browser.pause(1000);
+        expect(await files()).toBe(before);
+      } finally {
+        await browser.executeObsidian(async ({ app }) => {
+          const note = app.vault.getFileByPath("Linker.md");
+          if (note) await app.vault.delete(note);
+        });
+      }
+    });
+  });
+
   it("puts Obsidian's own workspace methods back as soon as the modal closes", async () => {
     await waitForPlugin();
     const { before, open, closed } = await browser.executeObsidian(

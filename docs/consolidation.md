@@ -149,6 +149,22 @@ Fixes made after the plugin was narrowed:
   The remaining patches are installed when a search opens and removed when it closes,
   and a patch that fails to install undoes the ones already applied (node tests, e2e
   against the real Obsidian).
+- Closing the modal released the patches before it detached its leaves, so the search
+  (query included) and the previewed note landed in Obsidian's closed-tab history. The
+  leaves are detached first and the patches released last, and the undo-history patch
+  now skips every embedded leaf, not only search views (node tests, e2e).
+- Each inherited patch was removed in turn and the e2e suite run against the real
+  Obsidian. Two had no observable effect and are gone: the `setPinned` guard (the
+  preview is still pinned when created) and the `setActiveLeaf` wrapper that called
+  `old` twice and set `activeTime = 1700000000000` (embedded leaves are not in the
+  workspace's root split, so `getMostRecentLeaf` never returns them; an e2e spec now
+  guards that). Two are kept because removing them changed behavior: `getRoot` (the
+  embedded leaves would no longer resolve to the workspace root) and `getLeaf` (a link
+  clicked in the preview would open the note in a background tab of the workspace).
+- Known gap: the README says a link clicked in the preview replaces the previewed
+  file. In Obsidian 1.15.1 it does nothing (the patched `getLeaf` returns the preview
+  leaf, but the note is not opened in it), pinned or not. The e2e spec only guards that
+  nothing opens in the workspace.
 
 ## Tooling decisions
 

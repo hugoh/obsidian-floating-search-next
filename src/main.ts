@@ -19,11 +19,6 @@ import {
 } from "./settings";
 import { SearchOpenSettingTab } from "./settingsTab";
 
-/** The current (leaf, params) form of Workspace.setActiveLeaf. */
-interface ActivatableWorkspace {
-  setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
-}
-
 type Uninstall = () => void;
 
 /** One function that runs all of `uninstalls`, last first. */
@@ -128,7 +123,7 @@ export default class SearchOpenPlugin extends Plugin {
     // Keep the plugin receiver across native method wrappers.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
     const self = this;
-    const uninstaller = around(Workspace.prototype, {
+    return around(Workspace.prototype, {
       getLeaf: (next) =>
         function (this: Workspace, ...args: Parameters<Workspace["getLeaf"]>) {
           const activeLeaf = self.app.workspace.getActiveViewOfType(View)?.leaf;
@@ -152,25 +147,6 @@ export default class SearchOpenPlugin extends Plugin {
         };
       },
     });
-    const uninstallActiveLeaf = around(
-      Workspace.prototype as unknown as ActivatableWorkspace,
-      {
-        setActiveLeaf(old) {
-          return function (
-            this: Workspace,
-            leaf: WorkspaceLeaf,
-            params?: { focus?: boolean },
-          ) {
-            if (isEmbeddedLeaf(leaf)) {
-              old.call(this, leaf, params);
-              leaf.activeTime = 1700000000000;
-            }
-            return old.call(this, leaf, params);
-          };
-        },
-      },
-    );
-    return combine([uninstaller, uninstallActiveLeaf]);
   }
 
   // Used for patch workspaceleaf pinned behaviors
@@ -180,12 +156,6 @@ export default class SearchOpenPlugin extends Plugin {
         return function (this: WorkspaceLeaf) {
           const top = old.call(this);
           return top?.getRoot === this.getRoot ? top : top?.getRoot();
-        };
-      },
-      setPinned(old) {
-        return function (this: WorkspaceLeaf, pinned: boolean) {
-          old.call(this, pinned);
-          if (isEmbeddedLeaf(this) && !pinned) this.setPinned(true);
         };
       },
     });
