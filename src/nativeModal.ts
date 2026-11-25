@@ -174,13 +174,16 @@ export class SearchOpenModal extends Modal {
     this.clearPreview();
     const { contentEl } = this;
 
-    this.cb(this.stateApplied ? this.closingState() : undefined);
+    const closing = this.stateApplied ? this.closingState() : undefined;
 
     this.searchLeaf?.detach();
     this.fileLeaf?.detach();
     this.searchEmbeddedView?.unload();
     this.fileEmbeddedView?.unload();
     contentEl.empty();
+
+    // Last, because the callback removes the patches the detaching relies on.
+    this.cb(closing);
   }
 
   private initInstructions(instructionsEl: HTMLElement) {

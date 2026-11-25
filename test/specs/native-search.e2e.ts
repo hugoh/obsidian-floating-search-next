@@ -638,6 +638,28 @@ describe("Search & Open modal", () => {
     ).toBe(true);
   });
 
+  it("leaves nothing in Obsidian's closed-tab history after a search and a preview", async () => {
+    const closedTabs = () =>
+      browser.executeObsidian(
+        ({ app }) =>
+          (app.workspace as unknown as { undoHistory: unknown[] }).undoHistory
+            .length,
+      );
+    await waitForPlugin();
+    const before = await closedTabs();
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown", "Tab"]);
+    await browser
+      .$(".search-open-modal .search-open-modal-file-ctn")
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    await closeModals();
+    await browser
+      .$(".search-open-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+    expect(await closedTabs()).toBe(before);
+  });
+
   it("puts Obsidian's own workspace methods back as soon as the modal closes", async () => {
     await waitForPlugin();
     const { before, open, closed } = await browser.executeObsidian(

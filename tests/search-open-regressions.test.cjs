@@ -91,7 +91,7 @@ test('native initialization cannot change selection after closing during delayed
   assert.deepEqual(h.clock.errors, []);
 });
 
-test('the undo-history patch only skips embedded search leaves', () => {
+test('the undo-history patch only skips embedded leaves', () => {
   const h = createHarness();
   const { Workspace } = h.obsidian;
   Workspace.prototype.pushUndoHistory = () => 'recorded';
@@ -101,6 +101,7 @@ test('the undo-history patch only skips embedded search leaves', () => {
   const workspace = new Workspace();
   assert.equal(workspace.pushUndoHistory(leafOf(false), 'id'), 'recorded', 'a normal search view keeps its history');
   assert.equal(workspace.pushUndoHistory(leafOf(true), 'id'), undefined, 'the embedded one is skipped');
+  assert.equal(workspace.pushUndoHistory({ embedded: true, getViewState: () => ({ type: 'markdown' }) }, 'id'), undefined, 'so is an embedded preview');
   uninstall();
 });
 
@@ -349,4 +350,38 @@ test('a patch that fails to install leaves nothing patched, and the next search 
   await h.clock.tick(0);
   assert.equal(untouched(), false);
   plugin.modal.close();
+});
+
+test('the patches are still in place while the modal detaches its leaves', async () => {
+  const h = createHarness();
+  const { Workspace } = h.obsidian;
+  const recorded = [];
+  Workspace.prototype.pushUndoHistory = (leaf) => recorded.push(leaf);
+  const plugin = pluginIn(h);
+  h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf.embedded);
+  const leaf = h.leafModule.nextLeaf;
+  Object.assign(leaf, { embedded: true, getViewState: () => ({ type: 'search' }) });
+  leaf.detach = function () { new Workspace().pushUndoHistory(this, 'id'); };
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  plugin.modal.close();
+  assert.deepEqual(recorded, [], 'closing a search must not add it to Obsidian\'s closed-tab history');
+});
+
+test('a previewed note is not added to the closed-tab history either', async () => {
+  const h = createHarness();
+  const { Workspace } = h.obsidian;
+  const recorded = [];
+  Workspace.prototype.pushUndoHistory = (leaf) => recorded.push(leaf);
+  const plugin = pluginIn(h);
+  h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf.embedded);
+  const preview = h.makeLeaf();
+  Object.assign(preview, { embedded: true, getViewState: () => ({ type: 'markdown' }) });
+  preview.detach = function () { new Workspace().pushUndoHistory(this, 'id'); };
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  h.leafModule.nextLeaf = preview;
+  await plugin.modal.initFileView(new h.TFile('note.md'), undefined);
+  plugin.modal.close();
+  assert.deepEqual(recorded, []);
 });

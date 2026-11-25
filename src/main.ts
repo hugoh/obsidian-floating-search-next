@@ -147,9 +147,7 @@ export default class SearchOpenPlugin extends Plugin {
         },
       pushUndoHistory(old) {
         return function (leaf: WorkspaceLeaf, id: string, ...args: unknown[]) {
-          if (isEmbeddedLeaf(leaf) && leaf.getViewState().type === "search") {
-            return;
-          }
+          if (isEmbeddedLeaf(leaf)) return;
           return old.call(this, leaf, id, ...args);
         };
       },
