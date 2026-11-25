@@ -1,53 +1,23 @@
 import { browser, expect } from "@wdio/globals";
 import { afterEach, describe, it } from "mocha";
-import { closeModals, PLUGIN_ID, resetPlugin, waitForPlugin } from "./helpers";
+import {
+  closeModals,
+  focusFirstResult,
+  PLUGIN_ID,
+  pressInSearchInput,
+  resetPlugin,
+  searchFor,
+  waitForPlugin,
+  waitForResults,
+} from "./helpers";
 
 const TITLES = ".search-open-modal .search-result-file-title";
-
-async function waitForResults() {
-  await browser.waitUntil(async () => (await browser.$$(TITLES)).length > 0, {
-    timeout: 15_000,
-    timeoutMsg: "the search returned no results",
-  });
-}
 
 describe("Search & Open modal", () => {
   afterEach(async () => {
     await closeModals();
     await resetPlugin();
   });
-
-  async function searchFor(query: string) {
-    await waitForPlugin();
-    await browser.executeObsidianCommand(
-      `${PLUGIN_ID}:search-obsidian-globally`,
-    );
-    const input = browser.$(".search-open-modal .search-input-container input");
-    await input.waitForExist();
-    await browser.waitUntil(() => input.isFocused(), {
-      timeoutMsg: "the search input never received focus",
-    });
-    await browser.keys(query.split(""));
-  }
-
-  /** Moves to the first result and returns the path of the file it stands for. */
-  async function focusFirstResult(): Promise<string> {
-    await browser.keys(["ArrowDown"]);
-    let focused: string | undefined;
-    await browser.waitUntil(
-      async () => {
-        focused = await browser.executeObsidian(
-          ({ app }, id) =>
-            app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
-              ?.path,
-          PLUGIN_ID,
-        );
-        return focused !== undefined;
-      },
-      { timeoutMsg: "no result received focus" },
-    );
-    return focused as string;
-  }
 
   it("runs Obsidian's search in a modal", async () => {
     await searchFor("pineapple");
@@ -171,6 +141,58 @@ describe("Search & Open modal", () => {
       { timeoutMsg: "Mod+Enter did not open a new tab" },
     );
     expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
+  });
+
+  describe("while the preview is the active leaf", () => {
+    // Obsidian can still count the preview as active when a key arrives; the
+    // result must open in the workspace, not inside the preview.
+    async function previewBecomesActive(): Promise<string> {
+      await searchFor("pineapple");
+      await waitForResults();
+      const focusedPath = await focusFirstResult();
+      await browser
+        .$(".search-open-modal .search-open-modal-file-ctn")
+        .waitForExist({ timeoutMsg: "no preview pane appeared" });
+      await browser.executeObsidian(({ app }, id) => {
+        const { modal } = app.plugins.plugins[id];
+        app.workspace.setActiveLeaf(modal.fileLeaf as never, { focus: false });
+      }, PLUGIN_ID);
+      return focusedPath;
+    }
+
+    it("opens the result in the workspace on Enter", async () => {
+      const focusedPath = await previewBecomesActive();
+      await pressInSearchInput({ key: "Enter" });
+      await browser.waitUntil(
+        async () =>
+          (await browser.executeObsidian(
+            ({ app }) => app.workspace.getActiveFile()?.path,
+          )) === focusedPath,
+        { timeoutMsg: `Enter did not open ${focusedPath} in the workspace` },
+      );
+    });
+
+    it("opens the result in a new tab on Mod+Enter", async () => {
+      await browser.executeObsidian(async ({ app }) => {
+        await app.workspace.openLinkText("Other", "", false);
+      });
+      const focusedPath = await previewBecomesActive();
+      await pressInSearchInput({ key: "Enter", metaKey: true, ctrlKey: true });
+      await browser.waitUntil(
+        async () =>
+          (
+            await browser.executeObsidian(({ app }) =>
+              app.workspace
+                .getLeavesOfType("markdown")
+                .map(
+                  (leaf) =>
+                    (leaf.view as { file?: { path: string } }).file?.path,
+                ),
+            )
+          ).includes(focusedPath),
+        { timeoutMsg: `Mod+Enter did not open ${focusedPath} in a tab` },
+      );
+    });
   });
 
   it("runs the close callback once however often the modal is closed", async () => {

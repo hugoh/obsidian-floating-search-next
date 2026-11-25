@@ -1,3 +1,4 @@
+import type { TFile, WorkspaceLeaf } from "obsidian";
 import "obsidian";
 
 /** The slice of the plugin that the e2e specs drive. */
@@ -10,14 +11,15 @@ export interface TestPlugin {
   modal: {
     cb: (...args: unknown[]) => void;
     close(): void;
-    fileLeaf?: { view: { file?: { path: string } } };
-    searchLeaf: {
+    initFileView(file: TFile, state?: unknown): Promise<void>;
+    fileLeaf?: WorkspaceLeaf & { view: { file?: { path: string } } };
+    searchLeaf: WorkspaceLeaf & {
       view: {
         setSortOrder(order: string): void;
         getState(): { sortOrder?: string };
         dom: {
           focusedItem?: { file?: { path: string } } | null;
-          resultDomLookup: Map<{ path: string }, { el: HTMLElement }>;
+          resultDomLookup: Map<TFile, { el: HTMLElement }>;
         };
       };
     };
@@ -38,6 +40,7 @@ declare module "obsidian" {
   }
 
   interface Workspace {
+    recentFileTracker: { lastOpenFiles: string[] };
     protocolHandler: {
       handlers: Map<string, (params: Record<string, string>) => void>;
     };

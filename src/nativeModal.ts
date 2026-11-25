@@ -282,6 +282,11 @@ export class SearchOpenModal extends Modal {
           currentView.onKeyArrowRightInFocus(e);
           break;
         case "Enter":
+          // Obsidian may still count the preview as the active leaf, and the
+          // getLeaf patch would then open the result inside the preview.
+          this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, {
+            focus: false,
+          });
           currentView.onKeyEnterInFocus(e);
           if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
             this.close();
