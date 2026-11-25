@@ -91,6 +91,10 @@ Fixes made after the plugin was narrowed:
   to skip a file only an embedded leaf showed, and the Recent Files plugin's
   `shouldAddFile` is wrapped while the modal is open (e2e; the plugin is represented by
   a stand-in, since it is not in the test vault).
+- Selecting the canvas card a result matched read the canvas 1 ms after opening it and
+  selected 20 ms later, so a canvas that took longer to load (or a reused leaf still
+  holding the previous canvas) got no selection. It now selects after the awaited open,
+  and only if the leaf still shows that file (e2e with slowed canvas reads, node tests).
 - Enter, or Cmd+Enter, could open the result inside the preview instead of the
   workspace when Obsidian still counted the preview as the active leaf (e2e).
 - After a plain arrow key Obsidian blurs the search input and focus stayed on the page

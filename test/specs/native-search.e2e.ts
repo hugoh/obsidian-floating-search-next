@@ -195,6 +195,73 @@ describe("Search & Open modal", () => {
     });
   });
 
+  it("selects the matching canvas card even when the canvas loads slowly", async () => {
+    await waitForPlugin();
+    await browser.executeObsidian(({ app }) => {
+      // Slow down canvas reads, as a big canvas or a cold disk would.
+      const w = window as unknown as { restoreReads: () => void };
+      const vault = app.vault as unknown as Record<string, unknown>;
+      const originals = ["read", "cachedRead"].map((name) => [
+        name,
+        vault[name] as (...args: unknown[]) => Promise<unknown>,
+      ]);
+      for (const [name, original] of originals as [
+        string,
+        (...args: unknown[]) => Promise<unknown>,
+      ][]) {
+        vault[name] = async (
+          file: { extension: string },
+          ...rest: unknown[]
+        ) => {
+          if (file.extension === "canvas") {
+            await new Promise((resolve) => setTimeout(resolve, 150));
+          }
+          return original.call(app.vault, file, ...rest);
+        };
+      }
+      w.restoreReads = () => {
+        for (const [name, original] of originals as [string, unknown][]) {
+          vault[name] = original;
+        }
+      };
+    });
+    try {
+      await searchFor("zebramarker");
+      await waitForResults();
+      await browser.keys(["ArrowDown", "ArrowDown"]);
+      await browser.waitUntil(
+        async () =>
+          (
+            await browser.executeObsidian(
+              ({ app }, id) =>
+                app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem
+                  ?.content ?? "",
+              PLUGIN_ID,
+            )
+          ).includes("zebramarker"),
+        { timeoutMsg: "the match line never received focus" },
+      );
+      await browser.waitUntil(
+        async () =>
+          (
+            await browser.executeObsidian(
+              ({ app }, id) =>
+                [
+                  ...(app.plugins.plugins[id].modal.fileLeaf?.view.canvas
+                    ?.selection ?? []),
+                ].map((card) => card.text),
+              PLUGIN_ID,
+            )
+          ).join() === "bravo zebramarker card",
+        { timeoutMsg: "the matching card was never selected" },
+      );
+    } finally {
+      await browser.execute(() =>
+        (window as unknown as { restoreReads: () => void }).restoreReads(),
+      );
+    }
+  });
+
   it("runs the close callback once however often the modal is closed", async () => {
     await waitForPlugin();
     await browser.executeObsidianCommand(

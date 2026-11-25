@@ -43,6 +43,26 @@ interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
 }
 
+/** Selects and zooms to the canvas card whose text a search result matched. */
+function selectMatchedCard(
+  leaf: WorkspaceLeaf,
+  file: TFile,
+  openState?: OpenViewState,
+) {
+  const view = leaf.view as CanvasLeafView & { file?: TFile };
+  if (view.file !== file || !view.canvas) return;
+  const wanted = (
+    openState?.eState as { match?: { content?: string } } | undefined
+  )?.match?.content;
+  if (wanted === undefined) return;
+  const { canvas } = view;
+  const found = canvas.data.nodes?.find((node) => node.text === wanted);
+  const card = found && canvas.nodes.get(found.id);
+  if (!card) return;
+  canvas.selectOnly(card);
+  canvas.zoomToSelection();
+}
+
 export default class SearchOpenPlugin extends Plugin {
   settings: SearchOpenSettings;
   private state: SearchState;
@@ -236,28 +256,11 @@ export default class SearchOpenPlugin extends Plugin {
             file: TFile,
             openState?: OpenViewState,
           ) {
-            const view = old.call(this, file, openState);
-            window.setTimeout(() => {
-              if (!isEmbeddedLeaf(this) || file.extension !== "canvas") return;
-
-              const canvas = (this.view as CanvasLeafView).canvas;
-              const wanted = (
-                openState?.eState as
-                  | { match?: { content?: string } }
-                  | undefined
-              )?.match?.content;
-              window.setTimeout(() => {
-                if (!canvas || wanted === undefined) return;
-                const found = canvas.data.nodes?.find((n) => n.text === wanted);
-                const node = found && canvas.nodes.get(found.id);
-                if (node) {
-                  canvas.selectOnly(node);
-                  canvas.zoomToSelection();
-                }
-              }, 20);
-            }, 1);
-
-            return view;
+            const opened = old.call(this, file, openState);
+            if (!isEmbeddedLeaf(this) || file.extension !== "canvas") {
+              return opened;
+            }
+            return opened.then(() => selectMatchedCard(this, file, openState));
           };
         },
       }),

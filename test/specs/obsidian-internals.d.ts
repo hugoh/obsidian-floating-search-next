@@ -12,13 +12,18 @@ export interface TestPlugin {
     cb: (...args: unknown[]) => void;
     close(): void;
     initFileView(file: TFile, state?: unknown): Promise<void>;
-    fileLeaf?: WorkspaceLeaf & { view: { file?: { path: string } } };
+    fileLeaf?: WorkspaceLeaf & {
+      view: {
+        file?: { path: string };
+        canvas?: { selection: Set<{ text?: string }> };
+      };
+    };
     searchLeaf: WorkspaceLeaf & {
       view: {
         setSortOrder(order: string): void;
         getState(): { sortOrder?: string };
         dom: {
-          focusedItem?: { file?: { path: string } } | null;
+          focusedItem?: { file?: { path: string }; content?: string } | null;
           resultDomLookup: Map<TFile, { el: HTMLElement }>;
         };
       };
