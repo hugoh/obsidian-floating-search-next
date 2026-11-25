@@ -266,7 +266,9 @@ describe("Search & Open modal", () => {
     // Makes one Obsidian call reject for leaves inside the modal, and undoes it.
     async function failInModal(method: "openFile" | "setViewState") {
       await browser.executeObsidian(({ obsidian }, name) => {
-        document.querySelectorAll(".notice").forEach((el) => el.remove());
+        document.querySelectorAll(".notice").forEach((notice) => {
+          notice.remove();
+        });
         const proto = obsidian.WorkspaceLeaf.prototype as unknown as Record<
           string,
           (...args: unknown[]) => Promise<unknown>
