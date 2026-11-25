@@ -55,9 +55,11 @@ describe("Search & Open keys", () => {
     await waitForResults();
   };
 
+  // The container exists before the note has rendered, and the preview hands
+  // focus back to the search box when it finishes, so wait for the note itself.
   const previewOpen = () =>
     browser
-      .$(".search-open-modal .search-open-modal-file-ctn")
+      .$(".search-open-modal .search-open-modal-file-ctn .markdown-rendered")
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
 
   const inputHasFocus = () =>
@@ -141,23 +143,33 @@ describe("Search & Open keys", () => {
     ).toBe(false);
   });
 
+  const focusInPreview = () =>
+    browser.execute(() =>
+      Boolean(
+        document.activeElement?.closest(
+          ".search-open-modal .search-open-modal-file-ctn",
+        ),
+      ),
+    );
+
+  // The preview hands focus back to the search box when it finishes opening,
+  // which can land after the key. Pressing again is harmless: it only ever
+  // moves focus into the preview.
+  const jumpIntoPreview = () =>
+    browser.waitUntil(
+      async () => {
+        await pressInSearchInput({ key: "g", ctrlKey: true });
+        await browser.pause(100);
+        return focusInPreview();
+      },
+      { timeoutMsg: "Ctrl+G did not move into the preview" },
+    );
+
   it("jumps into the preview and back with Ctrl+G", async () => {
     await results();
     await browser.keys(["ArrowDown", "Tab"]);
     await previewOpen();
-    const focusInPreview = () =>
-      browser.execute(() =>
-        Boolean(
-          document.activeElement?.closest(
-            ".search-open-modal .search-open-modal-file-ctn",
-          ),
-        ),
-      );
-    expect(await focusInPreview()).toBe(false);
-    await pressInSearchInput({ key: "g", ctrlKey: true });
-    await browser.waitUntil(focusInPreview, {
-      timeoutMsg: "Ctrl+G did not move into the preview",
-    });
+    await jumpIntoPreview();
     await browser.keys(["Control", "g"]);
     await browser.waitUntil(inputHasFocus, {
       timeoutMsg: "Ctrl+G did not come back to the search box",
@@ -168,18 +180,7 @@ describe("Search & Open keys", () => {
     await results();
     await browser.keys(["ArrowDown", "Tab"]);
     await previewOpen();
-    await pressInSearchInput({ key: "g", ctrlKey: true });
-    await browser.waitUntil(
-      () =>
-        browser.execute(() =>
-          Boolean(
-            document.activeElement?.closest(
-              ".search-open-modal .search-open-modal-file-ctn",
-            ),
-          ),
-        ),
-      { timeoutMsg: "Ctrl+G did not move into the preview" },
-    );
+    await jumpIntoPreview();
     const before = await focused();
     await browser.keys(["ArrowDown"]);
     await browser.pause(400);

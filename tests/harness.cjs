@@ -52,6 +52,7 @@ class ElementStub {
     for (const callback of this.listeners.get(event.type) || []) callback(event);
   }
   closest() { return null; }
+  matches(selector) { return selector === ':focus-within' && this.focusWithin === true; }
   querySelector() { return null; }
   querySelectorAll() { return []; }
   getElementsByTagName() { return []; }

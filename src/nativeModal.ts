@@ -267,6 +267,12 @@ export class SearchOpenModal extends Modal {
     if (inputEl) focusWithoutSuggestions(inputEl);
   }
 
+  /** Opening a preview takes focus; hand it back unless the user has gone into the preview. */
+  private refocusSearchInput() {
+    if (this.fileEl?.matches(":focus-within")) return;
+    this.focusSearchInput();
+  }
+
   private initInput(retries = 10) {
     if (this.closed) return;
     const inputEl = this.searchInput;
@@ -509,7 +515,7 @@ export class SearchOpenModal extends Modal {
         this.fileState = state;
         window.setTimeout(() => {
           if (this.closed || !isCurrent()) return;
-          this.focusSearchInput();
+          this.refocusSearchInput();
         }, 0);
       }
 
@@ -539,6 +545,6 @@ export class SearchOpenModal extends Modal {
     this.markPreviewMatch(state);
     this.fileState = state;
 
-    this.focusSearchInput();
+    this.refocusSearchInput();
   }
 }

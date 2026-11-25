@@ -383,3 +383,31 @@ test('a previewed note is not added to the closed-tab history either', async () 
   plugin.modal.close();
   assert.deepEqual(recorded, []);
 });
+
+async function previewFinishing(h, { focusInPreview }) {
+  const opened = deferred();
+  const leaf = h.makeLeaf();
+  leaf.openFile = () => opened.promise;
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  const input = modal.searchLeaf.view.searchComponent.inputEl;
+  const preview = modal.initFileView(new h.TFile('slow.md'), undefined);
+  await h.clock.microtasks();
+  modal.fileEl.focusWithin = focusInPreview;
+  const before = input.focusCount;
+  opened.resolve();
+  await preview;
+  await h.clock.tick(10);
+  return input.focusCount - before;
+}
+
+test('a preview that finishes opening gives focus back to the search box', async () => {
+  const h = createHarness();
+  assert.equal(await previewFinishing(h, { focusInPreview: false }), 1);
+});
+
+test('a preview that finishes opening leaves focus alone once the user has moved into it', async () => {
+  const h = createHarness();
+  assert.equal(await previewFinishing(h, { focusInPreview: true }), 0);
+});
