@@ -1,6 +1,6 @@
 {
   "name": "search-open",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Search your vault and open the match, with a preview pane. A simplified fork of Floating Search by Boninall.",
   "main": "main.js",
   "scripts": {

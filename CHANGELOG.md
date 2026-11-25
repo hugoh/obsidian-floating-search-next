@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/hugoh/obsidian-search-open/compare/0.1.3...0.2.0) (2026-11-25)
+
+
+### Features
+
+* narrow to the global search modal and rename to Search & Open ([#16](https://github.com/hugoh/obsidian-search-open/issues/16)) ([83c6215](https://github.com/hugoh/obsidian-search-open/commit/83c6215569868655d3ff2dbfe9d1a9ceb990f557))
+
+
+### Bug Fixes
+
+* close the code-review findings and clean up the leftovers ([#18](https://github.com/hugoh/obsidian-search-open/issues/18)) ([f2e393d](https://github.com/hugoh/obsidian-search-open/commit/f2e393d5a39862cc9cc64ed30861a460b8dbcd60))
+
 ## [0.1.3](https://github.com/hugoh/obsidian-floating-search-next/compare/0.1.2...0.1.3) (2026-11-19)
 
 
