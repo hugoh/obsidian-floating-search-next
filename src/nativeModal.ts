@@ -2,6 +2,7 @@ import {
   debounce,
   Keymap,
   Modal,
+  type Modifier,
   Notice,
   Platform,
   type SearchResultItem,
@@ -170,7 +171,6 @@ export class SearchOpenModal extends Modal {
     this.debouncedAutoPreview.cancel();
     const inputEl = this.searchInput;
     inputEl?.removeEventListener("input", this.clearPreviewOnInput);
-    if (inputEl) inputEl.onkeydown = null;
     this.clearPreview();
     const { contentEl } = this;
 
@@ -279,94 +279,96 @@ export class SearchOpenModal extends Modal {
     }
     inputEl.addEventListener("input", this.clearPreviewOnInput);
     inputEl.focus();
-    inputEl.onkeydown = (e) => {
-      if (e.isComposing || e.key === "Process") {
-        return;
-      }
-      const currentView = this.searchLeaf.view as SearchView;
-      switch (e.key) {
-        case "ArrowDown":
-        case "n":
-          if (e.key === "n" && !e.ctrlKey) break;
-          if (e.key === "n") e.preventDefault();
+    this.registerKeys();
+  }
 
-          if (e.shiftKey) {
-            currentView.onKeyShowMoreAfter(e);
-            if (currentView.dom.focusedItem) {
-              if (currentView.dom.focusedItem.collapsible) {
-                currentView.dom.focusedItem.setCollapse(false);
-              }
-            }
-          } else {
-            currentView.onKeyArrowDownInFocus(e);
-            // Obsidian blurs the input here; keep it ready for the next key.
-            this.focusSearchInput();
-            this.debouncedAutoPreview();
-          }
-          break;
-        case "ArrowUp":
-        case "p":
-          if (e.key === "p" && !e.ctrlKey) break;
-          if (e.key === "p") e.preventDefault();
-
-          if (e.shiftKey) {
-            currentView.onKeyShowMoreBefore(e);
-            if (currentView.dom.focusedItem) {
-              if (currentView.dom.focusedItem.collapseEl) {
-                currentView.dom.focusedItem.setCollapse(true);
-              }
-            }
-          } else {
-            currentView.onKeyArrowUpInFocus(e);
-            this.focusSearchInput();
-            this.debouncedAutoPreview();
-          }
-          break;
-        case "ArrowLeft":
-          currentView.onKeyArrowLeftInFocus(e);
-          break;
-        case "ArrowRight":
-          currentView.onKeyArrowRightInFocus(e);
-          break;
-        case "Enter":
-          // Obsidian may still count the preview as the active leaf, and the
-          // getLeaf patch would then open the result inside the preview.
-          this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, {
-            focus: false,
-          });
-          {
-            // Opening it for real makes it a recent file after all.
-            const item = currentView.dom.focusedItem;
-            const file = item?.file ?? item?.parent.file;
-            if (file) this.previewedPaths.delete(file.path);
-          }
-          currentView.onKeyEnterInFocus(e);
-          if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
-            this.close();
-          }
-          break;
-        case "Tab":
-          e.preventDefault();
-          if (e.shiftKey && this.fileLeaf) {
-            this.clearPreview();
-            break;
-          }
-
-          {
-            const focused = currentView.dom.focusedItem;
-            if (focused) this.previewItem(focused);
-          }
-          break;
-        case "g":
-          if (this.fileLeaf && e.ctrlKey) {
-            e.preventDefault();
-            this.plugin.app.workspace.setActiveLeaf(this.fileLeaf, {
-              focus: true,
-            });
-          }
-          break;
-      }
+  /**
+   * Keys in the search box drive the embedded search view, which is not the
+   * active leaf and so never sees them itself. Each handler passes on events
+   * from anywhere else, such as the preview, and while text is being composed.
+   */
+  private registerKeys() {
+    const on = (
+      modifiers: Modifier[] | null,
+      key: string,
+      handle: (e: KeyboardEvent) => unknown,
+    ) => {
+      this.scope.register(modifiers, key, (e) => {
+        if (e.isComposing || e.target !== this.searchInput) return true;
+        return handle(e);
+      });
     };
+    on(null, "ArrowDown", (e) => this.moveDown(e));
+    on(null, "ArrowUp", (e) => this.moveUp(e));
+    on(["Ctrl"], "n", (e) => {
+      this.moveDown(e);
+      return false;
+    });
+    on(["Ctrl"], "p", (e) => {
+      this.moveUp(e);
+      return false;
+    });
+    on(null, "ArrowLeft", (e) => this.searchView.onKeyArrowLeftInFocus(e));
+    on(null, "ArrowRight", (e) => this.searchView.onKeyArrowRightInFocus(e));
+    on(null, "Enter", (e) => this.openFocused(e));
+    on(null, "Tab", (e) => {
+      if (e.shiftKey && this.fileLeaf) {
+        this.clearPreview();
+        return false;
+      }
+      const focused = this.searchView.dom.focusedItem;
+      if (focused) this.previewItem(focused);
+      return false;
+    });
+    on(["Ctrl"], "g", () => {
+      if (!this.fileLeaf) return true;
+      this.plugin.app.workspace.setActiveLeaf(this.fileLeaf, { focus: true });
+      return false;
+    });
+  }
+
+  private get searchView() {
+    return this.searchLeaf.view as SearchView;
+  }
+
+  private moveDown(e: KeyboardEvent) {
+    const view = this.searchView;
+    if (e.shiftKey) {
+      view.onKeyShowMoreAfter(e);
+      const focused = view.dom.focusedItem;
+      if (focused?.collapsible) focused.setCollapse(false);
+      return;
+    }
+    view.onKeyArrowDownInFocus(e);
+    // Obsidian blurs the input here; keep it ready for the next key.
+    this.focusSearchInput();
+    this.debouncedAutoPreview();
+  }
+
+  private moveUp(e: KeyboardEvent) {
+    const view = this.searchView;
+    if (e.shiftKey) {
+      view.onKeyShowMoreBefore(e);
+      const focused = view.dom.focusedItem;
+      if (focused?.collapseEl) focused.setCollapse(true);
+      return;
+    }
+    view.onKeyArrowUpInFocus(e);
+    this.focusSearchInput();
+    this.debouncedAutoPreview();
+  }
+
+  private openFocused(e: KeyboardEvent) {
+    const view = this.searchView;
+    // Obsidian may still count the preview as the active leaf, and the
+    // getLeaf patch would then open the result inside the preview.
+    this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, { focus: false });
+    // Opening it for real makes it a recent file after all.
+    const item = view.dom.focusedItem;
+    const file = item?.file ?? item?.parent.file;
+    if (file) this.previewedPaths.delete(file.path);
+    view.onKeyEnterInFocus(e);
+    if (view.dom.focusedItem && Keymap.isModEvent(e) !== "tab") this.close();
   }
 
   private autoPreviewFocusedItem() {

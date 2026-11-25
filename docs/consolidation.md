@@ -165,6 +165,15 @@ Fixes made after the plugin was narrowed:
   In Obsidian 1.15.1 it does nothing (the patched `getLeaf` returns the preview leaf,
   but the note is not opened in it), pinned or not, so the claim was dropped. The e2e
   spec guards that the click opens nothing in the workspace.
+- The search box keys were one `onkeydown` switch of about 90 lines on the input, and
+  Ctrl+N and Ctrl+P did nothing: the handler called `preventDefault` before forwarding
+  the event, and Obsidian's own handler skips an event that is already prevented. The
+  keys are now bound with the modal's `Scope` (one handler per key, forwarding to the
+  search view), which fixes them. Handlers ignore events from outside the search box
+  (the preview keeps its arrow keys) and while text is being composed. Ctrl+Shift+N and
+  Ctrl+Shift+P no longer expand context; the documented Shift+Up and Shift+Down do. The
+  operator suggestion menu now gets its keys before the result navigation (e2e,
+  `keys.e2e.ts`).
 
 ## Tooling decisions
 
