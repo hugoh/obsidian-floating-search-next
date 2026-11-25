@@ -35,7 +35,7 @@ export interface Caret {
 
 /** What the modal hands back on close, once the search view took its state. */
 export interface ClosingState {
-  state: SearchState;
+  state: Partial<SearchState>;
   caret: Caret;
 }
 
@@ -49,8 +49,8 @@ export class SearchOpenModal extends Modal {
   private searchEmbeddedView: EmbeddedView;
   private fileEmbeddedView: EmbeddedView | undefined;
 
-  searchLeaf: WorkspaceLeaf;
-  fileLeaf: WorkspaceLeaf | undefined;
+  private searchLeaf: WorkspaceLeaf;
+  private fileLeaf: WorkspaceLeaf | undefined;
 
   private cb: (closing?: ClosingState) => void;
   private state: SearchState;
@@ -124,7 +124,9 @@ export class SearchOpenModal extends Modal {
     this.initInstructions(
       modalEl.createDiv({ cls: "search-open-modal-instructions" }),
     );
-    this.initCss(contentEl, modalEl, containerEl);
+    contentEl.classList.add("search-open-modal-content");
+    modalEl.classList.add("search-open-modal");
+    containerEl.classList.add("search-open-modal-container");
     await this.initSearchView(this.searchCtnEl);
     if (this.closed) {
       this.searchLeaf?.detach();
@@ -170,17 +172,7 @@ export class SearchOpenModal extends Modal {
     }
   }
 
-  initCss(
-    contentEl: HTMLElement,
-    modalEl: HTMLElement,
-    containerEl: HTMLElement,
-  ) {
-    contentEl.classList.add("search-open-modal-content");
-    modalEl.classList.add("search-open-modal");
-    containerEl.classList.add("search-open-modal-container");
-  }
-
-  async initSearchView(contentEl: HTMLElement) {
+  private async initSearchView(contentEl: HTMLElement) {
     const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, contentEl);
     this.searchLeaf = createdLeaf;
     this.searchEmbeddedView = embeddedView;
@@ -243,7 +235,7 @@ export class SearchOpenModal extends Modal {
     if (inputEl) focusWithoutSuggestions(inputEl);
   }
 
-  initInput(retries = 10) {
+  private initInput(retries = 10) {
     if (this.closed) return;
     const inputEl = this.searchInput;
     if (!inputEl) {
@@ -399,7 +391,7 @@ export class SearchOpenModal extends Modal {
     void this.initFileView(file, state);
   }
 
-  initContent() {
+  private initContent() {
     const { contentEl } = this;
     contentEl.onclick = (e) => {
       const resultElement = contentEl.getElementsByClassName(
@@ -471,7 +463,7 @@ export class SearchOpenModal extends Modal {
     return this.previewedPaths.has(file.path);
   }
 
-  async initFileView(file: TFile, state: PreviewState | undefined) {
+  private async initFileView(file: TFile, state: PreviewState | undefined) {
     if (this.closed) return;
     this.previewedPaths.add(file.path);
     try {
@@ -527,14 +519,7 @@ export class SearchOpenModal extends Modal {
     contentEl.addClass("has-file-ctn");
     this.modalEl.toggleClass("search-open-width", true);
     this.fileEl.onkeydown = (e) => {
-      if (e.ctrlKey && e.key === "g") {
-        e.preventDefault();
-        e.stopPropagation();
-
-        this.focusSearchInput();
-      }
-
-      if (e.key === "Tab" && e.ctrlKey) {
+      if (e.ctrlKey && (e.key === "g" || e.key === "Tab")) {
         e.preventDefault();
         e.stopPropagation();
 

@@ -16,7 +16,6 @@ import { strings } from "./i18n";
 import { isEmbeddedLeaf } from "./leafView";
 import { type Caret, SearchOpenModal } from "./nativeModal";
 import {
-  DEFAULT_SETTINGS,
   type SearchOpenSettings,
   type SearchState,
   sanitizeSettings,
@@ -68,7 +67,7 @@ export default class SearchOpenPlugin extends Plugin {
   private state: SearchState;
   private modal: SearchOpenModal | undefined;
 
-  public applySettingsUpdate = debounce(async () => {
+  private applySettingsUpdate = debounce(async () => {
     await this.saveSettings();
   }, 1000);
 
@@ -152,16 +151,12 @@ export default class SearchOpenPlugin extends Plugin {
     );
   }
 
-  initState() {
-    // The persisted query is never restored, so a search always opens global.
-    this.state = {
-      ...DEFAULT_SETTINGS.searchViewState,
-      ...this.settings.searchViewState,
-      query: "",
-    };
+  /** The sanitized settings never hold a query, so a search opens global. */
+  private initState() {
+    this.state = { ...this.settings.searchViewState };
   }
 
-  initModal(state: SearchState, caret?: Caret) {
+  private initModal(state: SearchState, caret?: Caret) {
     this.ensurePatched();
     this.modal?.close();
 
@@ -171,7 +166,7 @@ export default class SearchOpenPlugin extends Plugin {
         releaseRecentFiles();
         // Closed before the view took its state: there is nothing to remember.
         if (!closing) return;
-        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing.state };
+        this.state = { ...this.state, ...closing.state };
         this.lastCaret = closing.caret;
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();

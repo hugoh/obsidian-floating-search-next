@@ -12,7 +12,7 @@ type ConstructableWorkspaceSplit = new (
   dir: "horizontal" | "vertical",
 ) => WorkspaceSplit;
 
-export function isEmbeddedLeaf(leaf: WorkspaceLeaf) {
+export function isEmbeddedLeaf(leaf: WorkspaceLeaf | undefined) {
   if (!leaf) return false;
   return leaf.containerEl.matches(".search-open-embed .workspace-leaf");
 }
