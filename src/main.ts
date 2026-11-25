@@ -3,7 +3,6 @@ import {
   addIcon,
   type DragManager,
   debounce,
-  Editor,
   type ObsidianProtocolData,
   type OpenViewState,
   Plugin,
@@ -118,45 +117,7 @@ export default class SearchOpenPlugin extends Plugin {
     this.patchWorkspaceLeaf();
     this.patchRecentFileTracker();
     this.patchDragManager();
-    this.patchEditorHighlights();
   });
-
-  // Obsidian's search addon calls removeHighlights()/hasHighlight() on every
-  // markdown editor whenever a search runs. Editors created inside the
-  // embedded (HoverPopover) preview leaf may not have the search-highlight
-  // StateField registered in their CodeMirror state, so `state.field(...)`
-  // throws "Field is not present in this state" and crashes the app. Wrap
-  // both methods defensively so the embedded preview can never crash Obsidian
-  // — when the field is absent there are simply no highlights to manage.
-  private patchEditorHighlights() {
-    const swallowMissingField =
-      <R>(fallback: R) =>
-      (original: (...args: unknown[]) => R) =>
-        function (this: unknown, ...args: unknown[]): R {
-          try {
-            return original.apply(this, args);
-          } catch (e) {
-            if (
-              e instanceof RangeError &&
-              /Field is not present in this state/.test(e.message)
-            ) {
-              return fallback;
-            }
-            throw e;
-          }
-        };
-    const proto = Editor.prototype;
-    this.register(
-      around(proto, {
-        ...(proto.removeHighlights && {
-          removeHighlights: swallowMissingField<void>(undefined),
-        }),
-        ...(proto.hasHighlight && {
-          hasHighlight: swallowMissingField(false),
-        }),
-      }),
-    );
-  }
 
   /** The sanitized settings never hold a query, so a search opens global. */
   private initState() {

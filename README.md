@@ -83,7 +83,7 @@ This project is licensed under the **GNU General Public License v3.0** (see [LIC
 |---|---|---|
 | [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search) (Boninall) and its contributors | The original plugin: the floating modal, the embedded search view and preview, the keyboard navigation and the `obsidian://fs` handler | GPL-3.0 |
 | [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | The composition (IME) guard, the typed localization and its Chinese translation, preview and file-opening lifecycle fixes, and the regression test harness | GPL-3.0 |
-| [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | The crash guard for highlights in embedded previews, and applying the patches on first use | GPL-3.0 |
+| [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | Applying the patches on first use (its crash guard for highlights in embedded previews was removed with the editable preview) | GPL-3.0 |
 | [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`) and the `getRoot` patch in `src/main.ts`, both reached through Floating Search | MIT |
 | [pjeby/monkey-around](https://github.com/pjeby/monkey-around) | Method patching (bundled dependency) | ISC |
 | [Phosphor Icons](https://phosphoricons.com) | The ribbon icon | MIT |

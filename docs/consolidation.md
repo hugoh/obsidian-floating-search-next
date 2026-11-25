@@ -22,7 +22,7 @@ history, in that order. About 1,380 lines were counted:
 | Upstream (Quorafind, latest) | 55% | The modal, the embedded search view and preview, key handling, Obsidian typings, most of the old `leafView.ts` (itself derived from hover-editor), most of the CSS |
 | Written or reworked here | 36% | Settings, the plugin entry, `latestQueue.ts`, the lifecycle and caret handling, the rewritten tests |
 | AiurArtanis | 8% | The typed `strings()` and zh-CN translation, the IME guard, parts of the modal and CSS; the regression test harness (`tests/harness.cjs`, about 95% theirs) |
-| Peingxious | 1% | The highlight crash guard and applying the patches on first use |
+| Peingxious | 1% | Applying the patches on first use (the highlight crash guard was since removed) |
 
 A line counts as "written here" when it is not found verbatim, so reformatting and
 renamed identifiers push the share up; treat the numbers as a rough guide, not an audit.
@@ -42,7 +42,7 @@ that Obsidian no longer has.
 | IME composition guard | AiurArtanis | Kept |
 | zh-CN / en localization (typed `strings()`) | AiurArtanis | Removed (English only; messages stay in `src/i18n.ts`) |
 | Preview and file-opening lifecycle fixes, regression test harness | AiurArtanis | Kept (a handful of its 23 tests remain, adapted) |
-| Crash guard for highlights in embedded previews | Peingxious | Kept |
+| Crash guard for highlights in embedded previews | Peingxious | Removed (the preview is read-only reading mode, with no editor) |
 | Patches applied on first use, not at startup | Peingxious | Kept |
 | CMDK quick search, quick create | Upstream, reworked by both forks | Removed |
 | Filter bar (Bases, Canvas, starred, match case, regex) | AiurArtanis | Removed |

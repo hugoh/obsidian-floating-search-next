@@ -58,11 +58,6 @@ declare module "obsidian" {
     activeTime: number;
   }
 
-  interface Editor {
-    removeHighlights?(...args: unknown[]): void;
-    hasHighlight?(...args: unknown[]): boolean;
-  }
-
   interface Workspace {
     recentFileTracker?: {
       onFileOpen(newFile: TFile | null, oldFile: TFile | null): void;
