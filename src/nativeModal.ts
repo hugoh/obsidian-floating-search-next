@@ -330,35 +330,12 @@ export class SearchOpenModal extends Modal {
             if (focused) this.previewItem(focused);
           }
           break;
-        case "e":
-          if (e.ctrlKey) {
-            e.preventDefault();
-            if (this.fileLeaf) {
-              const estate = this.fileLeaf.getViewState();
-              estate.state = {
-                ...estate.state,
-                mode: "preview" === estate.state?.mode ? "source" : "preview",
-              };
-              void this.fileLeaf
-                .setViewState(estate, { focus: true })
-                .catch((error) => this.reportFailure(error));
-              window.setTimeout(() => this.focusSearchInput(), 0);
-            }
-          }
-          break;
         case "g":
           if (this.fileLeaf && e.ctrlKey) {
             e.preventDefault();
             this.plugin.app.workspace.setActiveLeaf(this.fileLeaf, {
               focus: true,
             });
-          }
-          break;
-        case "C":
-          if (e.ctrlKey && e.shiftKey) {
-            e.preventDefault();
-            const text = currentView.dom.focusedItem?.el.innerText;
-            if (text) void navigator.clipboard.writeText(text);
           }
           break;
       }
@@ -457,16 +434,26 @@ export class SearchOpenModal extends Modal {
     }
   }
 
+  /** The preview is only ever shown in reading mode, never as an editor. */
+  private openReadOnly(
+    leaf: WorkspaceLeaf,
+    file: TFile,
+    state: PreviewState | undefined,
+  ) {
+    return leaf.openFile(file, {
+      active: false,
+      state: { mode: "preview" },
+      eState: state,
+    });
+  }
+
   private async renderFileView(
     file: TFile,
     state: PreviewState | undefined,
     isCurrent: () => boolean,
   ) {
     if (this.fileLeaf) {
-      await this.fileLeaf.openFile(file, {
-        active: false,
-        eState: state,
-      });
+      await this.openReadOnly(this.fileLeaf, file, state);
       if (this.closed || !isCurrent()) return;
 
       if (
@@ -511,10 +498,7 @@ export class SearchOpenModal extends Modal {
     this.fileLeaf = this.fileEmbeddedView.leaf;
 
     this.fileLeaf.setPinned(true);
-    await this.fileLeaf.openFile(file, {
-      active: false,
-      eState: state,
-    });
+    await this.openReadOnly(this.fileLeaf, file, state);
     if (this.closed || !isCurrent()) return;
     this.fileState = state;
 

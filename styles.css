@@ -45,10 +45,6 @@
 	height: 100%;
 }
 
-.search-open-embed-content .cm-scroller {
-	margin-top: 20px;
-}
-
 .search-open-embed.search-open-embed {
 	height: 100%;
 	width: 100%;
@@ -87,10 +83,6 @@
 
 .search-open-modal-file-ctn:focus-within {
 	border-bottom: 3px solid var(--color-accent);
-}
-
-.search-open-modal-file-ctn:focus-within .cm-scroller {
-	background-color: var(--background-primary);
 }
 
 .search-open-embed .workspace-split {

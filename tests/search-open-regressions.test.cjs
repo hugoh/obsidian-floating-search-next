@@ -62,6 +62,17 @@ test('native search clears its preview when no result is focused', async () => {
   assert.equal(modal.fileLeaf, undefined);
 });
 
+test('the preview always opens in reading mode, first open and reuse alike', async () => {
+  const h = createHarness();
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  await modal.initFileView(new h.TFile('first.md'), undefined);
+  await modal.initFileView(new h.TFile('second.md'), undefined);
+  const { opened } = h.spawned[0].leaf;
+  assert.equal(opened.length, 2);
+  for (const { options } of opened) assert.equal(options.state.mode, 'preview');
+});
+
 test('native initialization cannot change selection after closing during delayed setState', async () => {
   const h = createHarness();
   const pending = deferred();
