@@ -262,6 +262,81 @@ describe("Search & Open modal", () => {
     }
   });
 
+  describe("when Obsidian fails", () => {
+    // Makes one Obsidian call reject for leaves inside the modal, and undoes it.
+    async function failInModal(method: "openFile" | "setViewState") {
+      await browser.executeObsidian(({ obsidian }, name) => {
+        document.querySelectorAll(".notice").forEach((el) => el.remove());
+        const proto = obsidian.WorkspaceLeaf.prototype as unknown as Record<
+          string,
+          (...args: unknown[]) => Promise<unknown>
+        >;
+        const original = proto[name];
+        proto[name] = function (this: { containerEl: HTMLElement }, ...args) {
+          if (this.containerEl.closest(".search-open-embed")) {
+            return Promise.reject(new Error(`boom-${name}`));
+          }
+          return original.apply(this, args);
+        };
+        (window as unknown as { undoFailure: () => void }).undoFailure = () => {
+          proto[name] = original;
+        };
+      }, method);
+    }
+
+    const undoFailure = () =>
+      browser.execute(() =>
+        (window as unknown as { undoFailure?: () => void }).undoFailure?.(),
+      );
+
+    const noticeText = () =>
+      browser.execute(() =>
+        Array.from(
+          document.querySelectorAll(".notice"),
+          (el) => el.textContent,
+        ),
+      );
+
+    it("says so, and leaves no empty pane, when a preview cannot be opened", async () => {
+      await searchFor("pineapple");
+      await waitForResults();
+      await failInModal("openFile");
+      try {
+        await browser.keys(["ArrowDown"]);
+        await browser.waitUntil(async () => (await noticeText()).length > 0, {
+          timeoutMsg: "the failed preview was never reported",
+        });
+        expect((await noticeText()).join()).toContain("Search & Open");
+        expect(
+          await browser
+            .$(".search-open-modal .search-open-modal-file-ctn")
+            .isExisting(),
+        ).toBe(false);
+      } finally {
+        await undoFailure();
+      }
+    });
+
+    it("says so, and closes, when the search view cannot be built", async () => {
+      await waitForPlugin();
+      await failInModal("setViewState");
+      try {
+        await browser.executeObsidianCommand(
+          `${PLUGIN_ID}:search-obsidian-globally`,
+        );
+        await browser.waitUntil(async () => (await noticeText()).length > 0, {
+          timeoutMsg: "the failure was never reported",
+        });
+        expect((await noticeText()).join()).toContain("Search & Open");
+        await browser
+          .$(".search-open-modal")
+          .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+      } finally {
+        await undoFailure();
+      }
+    });
+  });
+
   it("runs the close callback once however often the modal is closed", async () => {
     await waitForPlugin();
     await browser.executeObsidianCommand(

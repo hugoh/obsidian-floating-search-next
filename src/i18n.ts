@@ -37,6 +37,7 @@ export interface Strings {
   instrPreview: string;
   instrSwitchView: string;
   instrAltClick: string;
+  errorGeneric: string;
 }
 
 const EN: Strings = {
@@ -54,6 +55,8 @@ const EN: Strings = {
   instrPreview: "Preview/Close Preview",
   instrSwitchView: "Switch Between Search and File View",
   instrAltClick: "Close Modal While In File View",
+  errorGeneric:
+    "Search & Open ran into a problem. See the developer console for details.",
 };
 
 const ZH: Strings = {
@@ -70,6 +73,7 @@ const ZH: Strings = {
   instrPreview: "预览/关闭预览",
   instrSwitchView: "在搜索和预览间切换",
   instrAltClick: "预览时关闭弹窗",
+  errorGeneric: "Search & Open 出错了，详情请查看开发者控制台。",
 };
 
 /** Every bundled translation, keyed by locale. */

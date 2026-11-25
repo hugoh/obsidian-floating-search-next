@@ -130,3 +130,31 @@ test('native initialization still applies the delayed state while the input is u
   await h.clock.tick(0);
   assert.equal(delayed.length, 1);
 });
+
+test('a preview that fails to open says so and leaves no empty pane behind', async () => {
+  const h = createHarness();
+  const leaf = h.makeLeaf();
+  leaf.openFile = () => Promise.reject(new Error('boom'));
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  modal.searchEmbeddedView = { unload() {} };
+  await modal.initFileView(new h.TFile('broken.md'), undefined);
+  assert.equal(h.notices.length, 1, 'the user is told');
+  assert.equal(h.consoleErrors.length, 1, 'and the cause is logged');
+  assert.equal(modal.fileLeaf, undefined);
+  assert.equal(leaf.detached, true);
+  assert.deepEqual(h.clock.errors, []);
+});
+
+test('a modal that cannot build its search view says so and closes', async () => {
+  const h = createHarness();
+  const leaf = h.makeLeaf();
+  leaf.setViewState = () => Promise.reject(new Error('boom'));
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  await modal.open();
+  assert.equal(h.notices.length, 1);
+  assert.equal(h.consoleErrors.length, 1);
+  assert.equal(modal.isOpen, false, 'a half-built modal is not left on screen');
+});

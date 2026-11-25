@@ -65,6 +65,9 @@ function deferred() {
 }
 
 function createHarness() {
+  const notices = [];
+  const consoleErrors = [];
+  const quietConsole = { ...console, error: (...args) => consoleErrors.push(args) };
   let nextTimer = 0;
   let now = 0;
   const timers = new Map();
@@ -128,6 +131,7 @@ function createHarness() {
   }
   const obsidian = {
     Modal, TFile,
+    Notice: class { constructor(message) { notices.push(message); } },
     Plugin: class {}, PluginSettingTab: class {}, addIcon() {}, setIcon() {},
     Workspace: class {}, WorkspaceLeaf: class {}, View: class {},
     WorkspaceTabs: class { constructor(children = []) { this.children = children; } },
@@ -202,7 +206,7 @@ function createHarness() {
     const module = { exports: {} };
     if (!fresh) loaded.set(name, module.exports);
     const context = {
-      module, exports: module.exports, console,
+      module, exports: module.exports, console: quietConsole,
       require(id) {
         if (id === 'obsidian') return obsidian;
         if (id === './leafView') return leafModule;
@@ -247,7 +251,7 @@ function createHarness() {
     },
     async saveSettings() {},
   };
-  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian, realLeafView: () => load('leafView', true),
+  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian, notices, consoleErrors, realLeafView: () => load('leafView', true),
     makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 

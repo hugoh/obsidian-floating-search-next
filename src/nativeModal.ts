@@ -2,6 +2,7 @@ import {
   debounce,
   Keymap,
   Modal,
+  Notice,
   Platform,
   type SearchResultItem,
   type SearchView,
@@ -77,6 +78,21 @@ export class SearchOpenModal extends Modal {
   }
 
   async onOpen() {
+    try {
+      await this.build();
+    } catch (error) {
+      this.reportFailure(error);
+      this.close();
+    }
+  }
+
+  /** Tells the user something went wrong; the details go to the console. */
+  private reportFailure(error: unknown) {
+    console.error("Search & Open:", error);
+    new Notice(strings().errorGeneric);
+  }
+
+  private async build() {
     this.closed = false;
     const { contentEl, containerEl, modalEl } = this;
 
@@ -169,7 +185,10 @@ export class SearchOpenModal extends Modal {
     });
 
     window.setTimeout(
-      () => void this.settleInitialState(initialState, initialQuery),
+      () =>
+        void this.settleInitialState(initialState, initialQuery).catch(
+          (error) => this.reportFailure(error),
+        ),
       0,
     );
   }
@@ -320,9 +339,9 @@ export class SearchOpenModal extends Modal {
                 ...estate.state,
                 mode: "preview" === estate.state?.mode ? "source" : "preview",
               };
-              void this.fileLeaf.setViewState(estate, {
-                focus: true,
-              });
+              void this.fileLeaf
+                .setViewState(estate, { focus: true })
+                .catch((error) => this.reportFailure(error));
               window.setTimeout(() => this.focusSearchInput(), 0);
             }
           }
@@ -445,10 +464,15 @@ export class SearchOpenModal extends Modal {
   async initFileView(file: TFile, state: PreviewState | undefined) {
     if (this.closed) return;
     this.previewedPaths.add(file.path);
-    await this.previews.run(async (isCurrent) => {
-      if (this.closed) return;
-      await this.renderFileView(file, state, isCurrent);
-    });
+    try {
+      await this.previews.run(async (isCurrent) => {
+        if (this.closed) return;
+        await this.renderFileView(file, state, isCurrent);
+      });
+    } catch (error) {
+      this.reportFailure(error);
+      if (!this.closed) this.clearPreview();
+    }
   }
 
   private async renderFileView(
