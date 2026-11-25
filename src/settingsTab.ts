@@ -37,11 +37,14 @@ export class SearchOpenSettingTab extends PluginSettingTab {
   }
 
   override getControlValue(key: string): unknown {
-    return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+    return key === "showInstructions"
+      ? this.plugin.settings.showInstructions
+      : undefined;
   }
 
   override async setControlValue(key: string, value: unknown): Promise<void> {
-    (this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+    if (key !== "showInstructions" || typeof value !== "boolean") return;
+    this.plugin.settings.showInstructions = value;
     await this.plugin.saveSettings();
   }
 }

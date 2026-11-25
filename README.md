@@ -34,20 +34,20 @@ BRAT also keeps the plugin up to date.
 ## Usage
 
 1. **Two commands**:
-    - `Search Obsidian Globally`: opens an empty search;
-    - `Search Obsidian Globally (With Last State)`: reopens with the last query and the cursor where you left it, for 30 seconds after each search.
+    - `Search Obsidian globally`: opens an empty search;
+    - `Search Obsidian globally (with last state)`: reopens with the last query and the cursor where you left it, for 30 seconds after each search.
 2. **When the cursor is in the search box**:
-    - Use the up and down arrow keys to move between results;
+    - Use the up and down arrow keys (or Ctrl+N and Ctrl+P) to move between results; after a short pause (150 ms) the selected result is previewed on the right;
     - With a result selected, hold Shift and press up or down to expand the results above or below it; on a file name, collapse the results under it;
     - With a result selected:
         - Press Enter to open the file and close the popup;
         - Press Ctrl+Enter (Cmd+Enter on macOS) to open the file in a new tab and keep the popup open;
         - Press Ctrl+Shift+Alt+Enter to open the file in a new window and close the popup;
-    - Press Tab to preview the selected result on the right of the popup, and Shift+Tab to close the preview;
+    - Press Tab to preview the selected result straight away, and Shift+Tab to close the preview;
     - Press Ctrl+Shift+C to copy the selected result;
     - While a file is previewed, press Ctrl+E to toggle its reading mode;
     - While a file is previewed, press Ctrl+G to jump from the search box into the preview, or from the preview back to the search box;
-    - While a file is previewed, press Tab twice to jump into it, or Ctrl+Tab to go back to the search box.
+    - On a match line, press Tab again to jump into its preview, and Ctrl+Tab to come back to the search box.
 3. **Mouse**:
     - While a file is previewed, clicking another result switches the preview instead of closing the popup; Alt+click opens the file and closes the popup;
     - With no preview, clicking a result closes the popup and navigates to the file, as in Obsidian's own search.
@@ -58,6 +58,10 @@ BRAT also keeps the plugin up to date.
 
 - **Show instructions** shows the key hints under the modal.
 - Obsidian's own sort order (relevance by default), collapse, extra context, explain and match-case toggles are remembered between sessions. The query itself is never saved.
+
+## Recent files
+
+Previewing is not opening. A file you only preview in the modal is not added to Obsidian's recent files (which the quick switcher uses), nor to the list of the [Recent Files](https://github.com/tgrosinger/recent-files-obsidian) plugin if you use it. A file you open with Enter, or Cmd/Ctrl+Enter, is recorded as usual.
 
 Requires Obsidian 1.15.1 or later.
 
@@ -80,7 +84,7 @@ This project is licensed under the **GNU General Public License v3.0** (see [LIC
 | [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search) (Boninall) and its contributors | The original plugin: the floating modal, the embedded search view and preview, the keyboard navigation and the `obsidian://fs` handler | GPL-3.0 |
 | [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | The composition (IME) guard, the typed localization and its Chinese translation, preview and file-opening lifecycle fixes, and the regression test harness | GPL-3.0 |
 | [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | The crash guard for highlights in embedded previews, and applying the patches on first use | GPL-3.0 |
-| [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`, reached through Floating Search) | MIT |
+| [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`) and the `getRoot` patch in `src/main.ts`, both reached through Floating Search | MIT |
 | [pjeby/monkey-around](https://github.com/pjeby/monkey-around) | Method patching (bundled dependency) | ISC |
 | [Phosphor Icons](https://phosphoricons.com) | The ribbon icon | MIT |
 

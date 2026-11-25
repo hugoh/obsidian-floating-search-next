@@ -43,16 +43,30 @@ interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
 }
 
-/** Editor methods Obsidian's search addon calls but does not declare. */
-interface HighlightingEditor {
-  removeHighlights?: (...args: unknown[]) => void;
-  hasHighlight?: (...args: unknown[]) => boolean;
+/** Selects and zooms to the canvas card whose text a search result matched. */
+function selectMatchedCard(
+  leaf: WorkspaceLeaf,
+  file: TFile,
+  openState?: OpenViewState,
+) {
+  const view = leaf.view as CanvasLeafView & { file?: TFile };
+  if (view.file !== file || !view.canvas) return;
+  const wanted = (
+    openState?.eState as { match?: { content?: string } } | undefined
+  )?.match?.content;
+  if (wanted === undefined) return;
+  const { canvas } = view;
+  const found = canvas.data.nodes?.find((node) => node.text === wanted);
+  const card = found && canvas.nodes.get(found.id);
+  if (!card) return;
+  canvas.selectOnly(card);
+  canvas.zoomToSelection();
 }
 
 export default class SearchOpenPlugin extends Plugin {
   settings: SearchOpenSettings;
   private state: SearchState;
-  private modal: SearchOpenModal;
+  private modal: SearchOpenModal | undefined;
 
   public applySettingsUpdate = debounce(async () => {
     await this.saveSettings();
@@ -81,9 +95,11 @@ export default class SearchOpenPlugin extends Plugin {
   }
 
   onunload() {
-    // Saving is debounced; do not drop a change made just before unloading.
-    void this.applySettingsUpdate.run();
+    // Closing the modal queues a save of its final state; flush it, and drop
+    // the pending "forget the last query" timer so nothing outlives the plugin.
     this.modal?.close();
+    void this.applySettingsUpdate.run();
+    this.forgetQuery.cancel();
   }
 
   // The monkeypatches are only needed once a search is opened, so they are
@@ -91,11 +107,12 @@ export default class SearchOpenPlugin extends Plugin {
   private patched = false;
   private ensurePatched() {
     if (this.patched) return;
-    this.patched = true;
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
+    this.patchRecentFileTracker();
     this.patchDragManager();
     this.patchEditorHighlights();
+    this.patched = true;
   }
 
   // Obsidian's search addon calls removeHighlights()/hasHighlight() on every
@@ -122,7 +139,7 @@ export default class SearchOpenPlugin extends Plugin {
             throw e;
           }
         };
-    const proto = Editor.prototype as unknown as HighlightingEditor;
+    const proto = Editor.prototype;
     this.register(
       around(proto, {
         ...(proto.removeHighlights && {
@@ -148,10 +165,14 @@ export default class SearchOpenPlugin extends Plugin {
     this.ensurePatched();
     this.modal?.close();
 
-    this.modal = new SearchOpenModal(
-      (closing, closingCaret) => {
-        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing };
-        this.lastCaret = closingCaret;
+    const modal: SearchOpenModal = new SearchOpenModal(
+      (closing) => {
+        if (this.modal === modal) this.modal = undefined;
+        releaseRecentFiles();
+        // Closed before the view took its state: there is nothing to remember.
+        if (!closing) return;
+        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing.state };
+        this.lastCaret = closing.caret;
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();
         this.forgetQuery();
@@ -160,7 +181,9 @@ export default class SearchOpenPlugin extends Plugin {
       state,
       caret,
     );
-    this.modal.open();
+    const releaseRecentFiles = this.holdBackRecentFiles(modal);
+    this.modal = modal;
+    modal.open();
   }
 
   patchWorkspace() {
@@ -171,26 +194,22 @@ export default class SearchOpenPlugin extends Plugin {
       getLeaf: (next) =>
         function (this: Workspace, ...args: Parameters<Workspace["getLeaf"]>) {
           const activeLeaf = self.app.workspace.getActiveViewOfType(View)?.leaf;
-          if (activeLeaf?.parent) {
-            const fsCtnEl = activeLeaf.parent.containerEl.parentElement;
-            if (fsCtnEl?.hasClass("fs-content")) {
-              if (activeLeaf.view.getViewType() === "markdown") {
-                return activeLeaf;
-              }
+          if (activeLeaf && isEmbeddedLeaf(activeLeaf)) {
+            if (activeLeaf.view.getViewType() === "markdown") {
+              return activeLeaf;
+            }
 
-              const newLeaf = self.app.workspace.getMostRecentLeaf();
+            const newLeaf = self.app.workspace.getMostRecentLeaf();
 
-              if (newLeaf) {
-                this.setActiveLeaf(newLeaf, {});
-              }
+            if (newLeaf) {
+              this.setActiveLeaf(newLeaf, {});
             }
           }
           return next.apply(this, args);
         },
       pushUndoHistory(old) {
         return function (leaf: WorkspaceLeaf, id: string, ...args: unknown[]) {
-          const viewState = leaf.getViewState();
-          if (viewState.type === "search") {
+          if (isEmbeddedLeaf(leaf) && leaf.getViewState().type === "search") {
             return;
           }
           return old.call(this, leaf, id, ...args);
@@ -219,7 +238,6 @@ export default class SearchOpenPlugin extends Plugin {
 
   // Used for patch workspaceleaf pinned behaviors
   patchWorkspaceLeaf() {
-    const { app } = this;
     this.register(
       around(WorkspaceLeaf.prototype, {
         getRoot(old) {
@@ -240,64 +258,58 @@ export default class SearchOpenPlugin extends Plugin {
             file: TFile,
             openState?: OpenViewState,
           ) {
-            if (isEmbeddedLeaf(this)) {
-              window.setTimeout(
-                around(Workspace.prototype, {
-                  recordMostRecentOpenedFile(old) {
-                    return function (_file: TFile) {
-                      // Don't update the quick switcher's recent list
-                      if (_file !== file) {
-                        return old.call(this, _file);
-                      }
-                    };
-                  },
-                }),
-                1,
-              );
-              const recentFiles = app.plugins.plugins["recent-files-obsidian"];
-              if (recentFiles) {
-                window.setTimeout(
-                  around(recentFiles, {
-                    shouldAddFile(old) {
-                      return function (_file: TFile) {
-                        // Don't update the Recent Files plugin
-                        return _file !== file && old.call(this, _file);
-                      };
-                    },
-                  }),
-                  1,
-                );
-              }
+            const opened = old.call(this, file, openState);
+            if (!isEmbeddedLeaf(this) || file.extension !== "canvas") {
+              return opened;
             }
-
-            const view = old.call(this, file, openState);
-            window.setTimeout(() => {
-              const fsCtnEl = this.parent?.containerEl?.parentElement;
-              if (!fsCtnEl?.classList.contains("fs-content")) return;
-              if (file.extension !== "canvas") return;
-
-              const canvas = (this.view as CanvasLeafView).canvas;
-              const wanted = (
-                openState?.eState as
-                  | { match?: { content?: string } }
-                  | undefined
-              )?.match?.content;
-              window.setTimeout(() => {
-                if (!canvas || wanted === undefined) return;
-                const found = canvas.data.nodes?.find((n) => n.text === wanted);
-                const node = found && canvas.nodes.get(found.id);
-                if (node) {
-                  canvas.selectOnly(node);
-                  canvas.zoomToSelection();
-                }
-              }, 20);
-            }, 1);
-
-            return view;
+            return opened.then(() => selectMatchedCard(this, file, openState));
           };
         },
       }),
     );
+  }
+
+  /**
+   * Obsidian records a file as recent when it stops being the active file, and
+   * the preview leaf becomes the active leaf while it is shown. Leave out a file
+   * that was only ever shown by an embedded leaf.
+   */
+  patchRecentFileTracker() {
+    const { workspace } = this.app;
+    const tracker = workspace.recentFileTracker;
+    if (!tracker) return;
+    let previewed: TFile | null = null;
+    this.register(
+      around(tracker, {
+        onFileOpen: (old) =>
+          function (
+            this: unknown,
+            newFile: TFile | null,
+            oldFile: TFile | null,
+          ) {
+            const skip = oldFile !== null && oldFile === previewed;
+            const active = workspace.getActiveViewOfType(View)?.leaf;
+            previewed = active && isEmbeddedLeaf(active) ? newFile : null;
+            return skip ? undefined : old.call(this, newFile, oldFile);
+          },
+      }),
+    );
+  }
+
+  /**
+   * The Recent Files plugin adds a file on `file-open` when its
+   * `shouldAddFile` agrees. Keep previewed files out of its list while the modal
+   * is open; the returned function ends that.
+   */
+  holdBackRecentFiles(modal: { hasPreviewed(file: TFile): boolean }) {
+    const recentFiles = this.app.plugins.plugins["recent-files-obsidian"];
+    if (!recentFiles) return () => {};
+    return around(recentFiles, {
+      shouldAddFile: (old) =>
+        function (this: unknown, file: TFile) {
+          return !modal.hasPreviewed(file) && old.call(this, file);
+        },
+    });
   }
 
   patchDragManager() {
@@ -313,9 +325,8 @@ export default class SearchOpenPlugin extends Plugin {
           return function (e: DragEvent, a: TFile) {
             const result = old.call(this, e, a);
 
-            window.setTimeout(() => {
-              self.modal?.close();
-            }, 10);
+            const modal = self.modal;
+            window.setTimeout(() => modal?.close(), 10);
             return result;
           };
         },

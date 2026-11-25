@@ -65,6 +65,9 @@ function deferred() {
 }
 
 function createHarness() {
+  const notices = [];
+  const consoleErrors = [];
+  const quietConsole = { ...console, error: (...args) => consoleErrors.push(args) };
   let nextTimer = 0;
   let now = 0;
   const timers = new Map();
@@ -108,24 +111,15 @@ function createHarness() {
       this.containerEl = new ElementStub();
       this.scope = { register() {}, unregister() {} };
     }
-    open() { return this.onOpen(); }
-    close() { return this.onClose(); }
+    open() { this.isOpen = true; return this.onOpen(); }
+    close() {
+      // Obsidian ignores a repeated close().
+      if (!this.isOpen) return;
+      this.isOpen = false;
+      return this.onClose();
+    }
     onOpen() {}
     onClose() {}
-  }
-  class SuggestModal extends Modal {
-    constructor(app) {
-      super(app);
-      this.inputEl = new ElementStub();
-      this.resultContainerEl = new ElementStub();
-      this.chooser = {
-        suggestions: [], added: [],
-        setSuggestions(items) { this.suggestions = items; },
-        addSuggestion(item) { this.added.push(item); this.suggestions.push(item); },
-      };
-    }
-    setPlaceholder() {}
-    setInstructions() {}
   }
   class TFile {
     constructor(filePath) {
@@ -133,16 +127,30 @@ function createHarness() {
       this.name = filePath.split('/').at(-1);
       this.extension = this.name.split('.').at(-1);
       this.basename = this.name.slice(0, -(this.extension.length + 1));
-      this.stat = { mtime: 1, ctime: 1 };
-      this.parent = { path: filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : '/' };
     }
   }
   const obsidian = {
-    Modal, SuggestModal, TFile,
-    Plugin: class {}, PluginSettingTab: class {}, addIcon() {}, setIcon() {}, normalizePath: (p) => String(p).replace(/^\/+|\/+$/g, '') || '/', AbstractInputSuggest: class {}, TFolder: class {},
-    prepareFuzzySearch: (q) => (text) => (String(text).toLowerCase().includes(String(q).toLowerCase()) ? { score: 0, matches: [] } : null),
-    prepareSimpleSearch: (q) => (text) => (String(q).toLowerCase().split(/\s+/).filter(Boolean).every((w) => String(text).toLowerCase().includes(w)) ? { score: 2, matches: [[0, 1]] } : null),
-    Workspace: class {}, WorkspaceLeaf: class {}, WorkspaceContainer: class {},
+    Modal, TFile,
+    Notice: class { constructor(message) { notices.push(message); } },
+    Plugin: class {}, PluginSettingTab: class {}, addIcon() {}, setIcon() {},
+    Workspace: class {}, WorkspaceLeaf: class {}, View: class {},
+    WorkspaceTabs: class { constructor(children = []) { this.children = children; } },
+    WorkspaceSplit: class {
+      constructor(workspace, direction) {
+        this.workspace = workspace;
+        this.direction = direction;
+        this.children = [];
+        this.containerEl = new ElementStub();
+        this.replaced = [];
+      }
+      replaceChild(index, child) { this.replaced.push({ index, child }); this.children[index] = child; }
+    },
+    Component: class {
+      constructor() { this.refs = []; }
+      load() { this.onload?.(); }
+      unload() { this.onunload?.(); this.refs.forEach((ref) => ref.off()); }
+      registerEvent(ref) { this.refs.push(ref); }
+    },
     debounce(callback, delay) {
       let timer;
       const run = function (...args) {
@@ -153,16 +161,10 @@ function createHarness() {
       return run;
     },
     Keymap: {
-      isModEvent: (event) => !!(event.ctrlKey || event.metaKey || event.shiftKey),
-      isModifier: (event, modifier) => modifier === 'Mod' ? !!(event.ctrlKey || event.metaKey) : !!event.shiftKey,
+      // Like Obsidian: "tab" for the modifier alone, false without it.
+      isModEvent: (event) => ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey ? 'tab' : false),
     },
-    prepareFuzzySearch: (query) => (text) => {
-      const index = text.toLowerCase().indexOf(query.toLowerCase());
-      return index < 0 ? null : { score: 1, matches: [[index, index + query.length]] };
-    },
-    requireApiVersion: () => true,
     getLanguage: () => 'en',
-    setIcon() {}, addIcon() {}, renderResults() {},
   };
   const spawned = [];
   function makeLeaf() {
@@ -194,43 +196,50 @@ function createHarness() {
   };
   const sourceRoot = process.env.SEARCH_OPEN_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');
   const loaded = new Map();
-  function load(name) {
-    if (loaded.has(name)) return loaded.get(name);
+  // `fresh` evaluates the real module again instead of the cached copy (or the leafView stub).
+  function load(name, fresh = false) {
+    if (!fresh && loaded.has(name)) return loaded.get(name);
     const filename = path.join(sourceRoot, 'src', `${name}.ts`);
     let source = fs.readFileSync(filename, 'utf8');
 
     const { code } = transformSync(source, { loader: 'ts', format: 'cjs', target: 'node18', sourcefile: filename });
     const module = { exports: {} };
-    loaded.set(name, module.exports);
+    if (!fresh) loaded.set(name, module.exports);
     const context = {
-      module, exports: module.exports, console,
+      module, exports: module.exports, console: quietConsole,
       require(id) {
         if (id === 'obsidian') return obsidian;
         if (id === './leafView') return leafModule;
-        if (id === './i18n') return { strings: () => ({}), t: (key) => key };
+        if (id === './i18n') return { strings: () => ({}) };
         if (id.startsWith('./')) return load(id.slice(2));
         if (id === 'monkey-around') return require('monkey-around');
         throw new Error(`Unexpected dependency: ${id}`);
       },
       setTimeout: clock.setTimeout,
       clearTimeout: clock.clearTimeout,
-      AbortController, performance: { now: () => now },
       createDiv: () => new ElementStub(),
       document: { createElement: () => new ElementStub() },
       window: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout }, navigator: { language: 'en' },
-      MutationObserver: class { observe() {} disconnect() {} },
     };
     vm.runInNewContext(code, context, { filename });
-    loaded.set(name, module.exports);
+    if (!fresh) loaded.set(name, module.exports);
     return module.exports;
   }
-  const mainLeaf = makeLeaf();
+  const layoutListeners = [];
   const app = {
-    vault: { on() { return {}; }, offref() {}, getAllLoadedFiles: () => [], getFiles: () => [], cachedRead: async () => '', getAbstractFileByPath: () => null },
-    metadataCache: { getFileCache: () => null },
     workspace: {
-      getMostRecentLeaf: () => mainLeaf,
-      getLeaf: () => mainLeaf,
+      layoutListeners,
+      on(name, callback) {
+        const ref = { name, callback, off() { layoutListeners.splice(layoutListeners.indexOf(ref), 1); } };
+        layoutListeners.push(ref);
+        return ref;
+      },
+      createLeafInParent(split, index) { return { split, index }; },
+      rootSplit: { root: true },
+      floatingSplit: null,
+      activeView: undefined,
+      getActiveViewOfType() { return this.activeView; },
+      getMostRecentLeaf() { return { mostRecent: true }; },
       activeCalls: [],
       setActiveLeaf(leaf, options) { this.activeCalls.push({ leaf, options }); },
     },
@@ -242,8 +251,8 @@ function createHarness() {
     },
     async saveSettings() {},
   };
-  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin,
-    mainLeaf, makeLeaf, leafModule, spawned, TFile, ElementStub };
+  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian, notices, consoleErrors, realLeafView: () => load('leafView', true),
+    makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 
 module.exports = { createHarness, deferred, ElementStub };

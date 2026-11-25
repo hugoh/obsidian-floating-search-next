@@ -4,6 +4,10 @@ import { parseObsidianVersions } from "wdio-obsidian-service";
 
 const cacheDir = path.resolve(".obsidian-cache");
 
+// The Recent Files community plugin that the e2e tests install (disabled), to check
+// that previewed files stay out of its list. Renovate keeps the version current.
+const RECENT_FILES_VERSION = "1.7.10";
+
 // `bun run screenshot` runs the README screenshot spec in its own vault instead of the tests.
 const screenshots = Boolean(env.SCREENSHOTS);
 
@@ -29,7 +33,14 @@ export const config: WebdriverIO.Config = {
 			"wdio:obsidianOptions": {
 				appVersion,
 				installerVersion,
-				plugins: [path.resolve(".")],
+				plugins: [
+					path.resolve("."),
+					{
+						id: "recent-files-obsidian",
+						version: RECENT_FILES_VERSION,
+						enabled: false,
+					},
+				],
 				vault: path.resolve(
 					screenshots ? "test/vaults/screenshots" : "test/vaults/simple",
 				),

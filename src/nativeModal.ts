@@ -2,6 +2,7 @@ import {
   debounce,
   Keymap,
   Modal,
+  Notice,
   Platform,
   type SearchResultItem,
   type SearchView,
@@ -16,42 +17,26 @@ import type { SearchState } from "./settings";
 
 /**
  * Obsidian opens its search-operator menu whenever the input gains focus.
- * Focus the input again with that one handler skipped, so a restored query
- * does not come back with the menu open.
+ * Focus the input with that one handler skipped, so putting focus back does
+ * not bring the menu up.
  */
-function refocusWithoutSuggestions(inputEl: HTMLInputElement) {
-  inputEl.addEventListener("focus", (e) => e.stopImmediatePropagation(), {
-    capture: true,
-    once: true,
-  });
-  inputEl.blur();
+function focusWithoutSuggestions(inputEl: HTMLInputElement) {
+  const swallow = (e: Event) => e.stopImmediatePropagation();
+  inputEl.addEventListener("focus", swallow, { capture: true });
   inputEl.focus();
-}
-
-function createInstructionElement(
-  parentEl: HTMLElement,
-  divCls: string,
-  keyText: string,
-  text: string,
-) {
-  const divEl = parentEl.createDiv({ cls: divCls });
-  const iconEl = divEl.createSpan({
-    cls: "search-open-modal-instructions-key",
-  });
-  const textEl = divEl.createSpan({
-    cls: "search-open-modal-instructions-text",
-  });
-
-  iconEl.setText(keyText);
-  textEl.setText(text);
-
-  return { divEl, iconEl, textEl };
+  inputEl.removeEventListener("focus", swallow, { capture: true });
 }
 
 /** Where the cursor and selection sat in the search box. */
 export interface Caret {
   start: number;
   end: number;
+}
+
+/** What the modal hands back on close, once the search view took its state. */
+export interface ClosingState {
+  state: SearchState;
+  caret: Caret;
 }
 
 /** Where the preview should land: the matched text inside a result row. */
@@ -67,17 +52,17 @@ export class SearchOpenModal extends Modal {
   searchLeaf: WorkspaceLeaf;
   fileLeaf: WorkspaceLeaf | undefined;
 
-  private cb: (state: SearchState, caret: Caret) => void;
+  private cb: (closing?: ClosingState) => void;
   private state: SearchState;
   private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
+  private readonly previewedPaths = new Set<string>();
+  private stateApplied = false;
 
   private searchCtnEl: HTMLElement;
-  private instructionsEl: HTMLElement;
   private fileEl: HTMLElement;
 
-  private focusdItem: SearchResultItem | undefined;
   private closed = false;
   private readonly previews = new LatestQueue();
   private inputCleanup: (() => void) | null = null;
@@ -87,7 +72,7 @@ export class SearchOpenModal extends Modal {
   }, 150);
 
   constructor(
-    cb: (state: SearchState, caret: Caret) => void,
+    cb: (closing?: ClosingState) => void,
     plugin: SearchOpenPlugin,
     state: SearchState,
     caret?: Caret,
@@ -100,17 +85,45 @@ export class SearchOpenModal extends Modal {
   }
 
   async onOpen() {
+    try {
+      await this.build();
+    } catch (error) {
+      this.reportFailure(error);
+      this.close();
+    }
+  }
+
+  private closingState(): ClosingState {
+    const saved = this.searchLeaf.view.getState();
+    const inputEl = this.searchInput;
+    return {
+      state: {
+        ...saved,
+        query: typeof saved.query === "string" ? saved.query : "",
+      },
+      caret: {
+        start: inputEl?.selectionStart ?? 0,
+        end: inputEl?.selectionEnd ?? 0,
+      },
+    };
+  }
+
+  /** Tells the user something went wrong; the details go to the console. */
+  private reportFailure(error: unknown) {
+    console.error("Search & Open:", error);
+    new Notice(strings().errorGeneric);
+  }
+
+  private async build() {
     this.closed = false;
     const { contentEl, containerEl, modalEl } = this;
 
     this.searchCtnEl = contentEl.createDiv({
       cls: "search-open-modal-search-ctn",
     });
-    this.instructionsEl = modalEl.createDiv({
-      cls: "search-open-modal-instructions",
-    });
-
-    this.initInstructions(this.instructionsEl);
+    this.initInstructions(
+      modalEl.createDiv({ cls: "search-open-modal-instructions" }),
+    );
     this.initCss(contentEl, modalEl, containerEl);
     await this.initSearchView(this.searchCtnEl);
     if (this.closed) {
@@ -129,21 +142,7 @@ export class SearchOpenModal extends Modal {
     this.clearPreview();
     const { contentEl } = this;
 
-    if (this.searchLeaf) {
-      const saved = this.searchLeaf.view.getState();
-      const inputEl = (this.searchLeaf.view as SearchView).searchComponent
-        ?.inputEl;
-      this.cb(
-        {
-          ...saved,
-          query: typeof saved.query === "string" ? saved.query : "",
-        },
-        {
-          start: inputEl?.selectionStart ?? 0,
-          end: inputEl?.selectionEnd ?? 0,
-        },
-      );
-    }
+    this.cb(this.stateApplied ? this.closingState() : undefined);
 
     this.searchLeaf?.detach();
     this.fileLeaf?.detach();
@@ -152,53 +151,23 @@ export class SearchOpenModal extends Modal {
     contentEl.empty();
   }
 
-  initInstructions(instructionsEl: HTMLElement) {
-    if (!this.plugin.settings.showInstructions) {
-      return;
-    }
+  private initInstructions(instructionsEl: HTMLElement) {
+    if (!this.plugin.settings.showInstructions) return;
     const s = strings();
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-navigate",
-      "↑↓",
-      s.instrNavigate,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-collapse",
-      "Shift+↑↓",
-      s.instrCollapse,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-enter",
-      "↵",
-      s.instrOpenAndClose,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-mod-enter",
-      Platform.isMacOS ? "⌘↵" : "Ctrl+↵",
-      s.instrOpenNewTab,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-tab",
-      "Tab/Shift+Tab",
-      s.instrPreview,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-switch",
-      "Ctrl+G",
-      s.instrSwitchView,
-    );
-    createInstructionElement(
-      instructionsEl,
-      "search-open-modal-instructions-click",
-      "Alt+Click",
-      s.instrAltClick,
-    );
+    const hints: [key: string, text: string][] = [
+      ["↑↓", s.instrNavigate],
+      ["Shift+↑↓", s.instrCollapse],
+      ["↵", s.instrOpenAndClose],
+      [Platform.isMacOS ? "⌘↵" : "Ctrl+↵", s.instrOpenNewTab],
+      ["Tab/Shift+Tab", s.instrPreview],
+      ["Ctrl+G", s.instrSwitchView],
+      ["Alt+Click", s.instrAltClick],
+    ];
+    for (const [key, text] of hints) {
+      const hint = instructionsEl.createDiv();
+      hint.createSpan({ cls: "search-open-modal-instructions-key", text: key });
+      hint.createSpan({ cls: "search-open-modal-instructions-text", text });
+    }
   }
 
   initCss(
@@ -223,9 +192,13 @@ export class SearchOpenModal extends Modal {
       type: "search",
       state: initialState,
     });
+    this.stateApplied = true;
 
     window.setTimeout(
-      () => void this.settleInitialState(initialState, initialQuery),
+      () =>
+        void this.settleInitialState(initialState, initialQuery).catch(
+          (error) => this.reportFailure(error),
+        ),
       0,
     );
   }
@@ -241,15 +214,16 @@ export class SearchOpenModal extends Modal {
   ) {
     if (this.closed) return;
     const view = this.searchLeaf.view as SearchView;
-    const typed = view.searchComponent?.inputEl?.value;
-    if (!typed || typed === initialQuery) {
-      await view.setState(initialState, { history: false });
-    }
+    const typed = this.searchInput?.value;
+    // Text the user typed meanwhile owns the input, and the caret with it.
+    if (typed && typed !== initialQuery) return;
+    await view.setState(initialState, { history: false });
     if (this.closed) return;
-    const inputEl = view.searchComponent?.inputEl;
+    const inputEl = this.searchInput;
     if (!inputEl) return;
     if (this.caret) {
-      refocusWithoutSuggestions(inputEl);
+      inputEl.blur();
+      focusWithoutSuggestions(inputEl);
       const length = inputEl.value.length;
       inputEl.setSelectionRange(
         Math.min(this.caret.start, length),
@@ -260,9 +234,18 @@ export class SearchOpenModal extends Modal {
     }
   }
 
+  private get searchInput(): HTMLInputElement | undefined {
+    return (this.searchLeaf.view as SearchView).searchComponent?.inputEl;
+  }
+
+  private focusSearchInput() {
+    const inputEl = this.searchInput;
+    if (inputEl) focusWithoutSuggestions(inputEl);
+  }
+
   initInput(retries = 10) {
     if (this.closed) return;
-    const inputEl = this.contentEl.getElementsByTagName("input")[0];
+    const inputEl = this.searchInput;
     if (!inputEl) {
       if (retries > 0) {
         window.setTimeout(() => this.initInput(retries - 1), 50);
@@ -296,11 +279,11 @@ export class SearchOpenModal extends Modal {
               if (currentView.dom.focusedItem.collapsible) {
                 currentView.dom.focusedItem.setCollapse(false);
               }
-              this.focusdItem = currentView.dom.focusedItem ?? undefined;
             }
           } else {
             currentView.onKeyArrowDownInFocus(e);
-            this.focusdItem = currentView.dom.focusedItem ?? undefined;
+            // Obsidian blurs the input here; keep it ready for the next key.
+            this.focusSearchInput();
             this.debouncedAutoPreview();
           }
           break;
@@ -315,14 +298,10 @@ export class SearchOpenModal extends Modal {
               if (currentView.dom.focusedItem.collapseEl) {
                 currentView.dom.focusedItem.setCollapse(true);
               }
-              this.focusdItem = currentView.dom.focusedItem ?? undefined;
             }
           } else {
             currentView.onKeyArrowUpInFocus(e);
-            this.focusdItem = currentView.dom.focusedItem ?? undefined;
-            if (!currentView.dom.focusedItem?.content) {
-              this.focusdItem = undefined;
-            }
+            this.focusSearchInput();
             this.debouncedAutoPreview();
           }
           break;
@@ -333,6 +312,17 @@ export class SearchOpenModal extends Modal {
           currentView.onKeyArrowRightInFocus(e);
           break;
         case "Enter":
+          // Obsidian may still count the preview as the active leaf, and the
+          // getLeaf patch would then open the result inside the preview.
+          this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, {
+            focus: false,
+          });
+          {
+            // Opening it for real makes it a recent file after all.
+            const item = currentView.dom.focusedItem;
+            const file = item?.file ?? item?.parent.file;
+            if (file) this.previewedPaths.delete(file.path);
+          }
           currentView.onKeyEnterInFocus(e);
           if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
             this.close();
@@ -340,16 +330,9 @@ export class SearchOpenModal extends Modal {
           break;
         case "Tab":
           e.preventDefault();
-          if (e.shiftKey) {
-            if (this.fileLeaf) {
-              this.fileLeaf?.detach();
-              this.fileLeaf = undefined;
-              this.fileEmbeddedView?.unload();
-              this.modalEl.toggleClass("search-open-width", false);
-              this.fileEl.detach();
-
-              break;
-            }
+          if (e.shiftKey && this.fileLeaf) {
+            this.clearPreview();
+            break;
           }
 
           {
@@ -366,14 +349,10 @@ export class SearchOpenModal extends Modal {
                 ...estate.state,
                 mode: "preview" === estate.state?.mode ? "source" : "preview",
               };
-              void this.fileLeaf.setViewState(estate, {
-                focus: true,
-              });
-              window.setTimeout(() => {
-                (
-                  this.searchLeaf.view as SearchView
-                ).searchComponent?.inputEl?.focus();
-              }, 0);
+              void this.fileLeaf
+                .setViewState(estate, { focus: true })
+                .catch((error) => this.reportFailure(error));
+              window.setTimeout(() => this.focusSearchInput(), 0);
             }
           }
           break;
@@ -461,22 +440,12 @@ export class SearchOpenModal extends Modal {
           }
           if (!targetElement) return;
 
-          const fileInnerEl = targetElement?.getElementsByClassName(
-            "tree-item-inner",
-          )[0] as HTMLElement;
-          const innerText = fileInnerEl.innerText;
-          const file = this.plugin.app.metadataCache.getFirstLinkpathDest(
-            innerText,
-            "",
-          );
-
-          if (file) {
-            const item = currentView.dom.resultDomLookup.get(file);
+          for (const [file, item] of currentView.dom.resultDomLookup) {
+            if (item.el !== targetElement) continue;
             currentView.dom.setFocusedItem(item);
             void this.initFileView(file, undefined);
-            (
-              this.searchLeaf.view as SearchView
-            ).searchComponent?.inputEl?.focus();
+            this.focusSearchInput();
+            break;
           }
         }
 
@@ -487,22 +456,33 @@ export class SearchOpenModal extends Modal {
 
   private clearPreview() {
     this.previews.invalidate();
-    this.focusdItem = undefined;
     this.fileState = undefined;
     this.fileLeaf?.detach();
     this.fileEmbeddedView?.unload();
     this.fileLeaf = undefined;
     this.fileEmbeddedView = undefined;
     this.fileEl?.remove();
+    this.contentEl.removeClass("has-file-ctn");
     this.modalEl.removeClass("search-open-width");
+  }
+
+  /** Whether this file was shown in the preview and not opened since. */
+  hasPreviewed(file: TFile) {
+    return this.previewedPaths.has(file.path);
   }
 
   async initFileView(file: TFile, state: PreviewState | undefined) {
     if (this.closed) return;
-    await this.previews.run(async (isCurrent) => {
-      if (this.closed) return;
-      await this.renderFileView(file, state, isCurrent);
-    });
+    this.previewedPaths.add(file.path);
+    try {
+      await this.previews.run(async (isCurrent) => {
+        if (this.closed) return;
+        await this.renderFileView(file, state, isCurrent);
+      });
+    } catch (error) {
+      this.reportFailure(error);
+      if (!this.closed) this.clearPreview();
+    }
   }
 
   private async renderFileView(
@@ -533,9 +513,7 @@ export class SearchOpenModal extends Modal {
         this.fileState = state;
         window.setTimeout(() => {
           if (this.closed || !isCurrent()) return;
-          (
-            this.searchLeaf.view as SearchView
-          ).searchComponent?.inputEl?.focus();
+          this.focusSearchInput();
         }, 0);
       }
 
@@ -553,18 +531,16 @@ export class SearchOpenModal extends Modal {
         e.preventDefault();
         e.stopPropagation();
 
-        (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+        this.focusSearchInput();
       }
 
       if (e.key === "Tab" && e.ctrlKey) {
         e.preventDefault();
         e.stopPropagation();
 
-        (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+        this.focusSearchInput();
       }
     };
-
-    if (!this.fileEl) return;
 
     const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, this.fileEl);
     this.fileLeaf = createdLeaf;
@@ -578,6 +554,6 @@ export class SearchOpenModal extends Modal {
     if (this.closed || !isCurrent()) return;
     this.fileState = state;
 
-    (this.searchLeaf.view as SearchView).searchComponent?.inputEl?.focus();
+    this.focusSearchInput();
   }
 }

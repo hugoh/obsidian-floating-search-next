@@ -14,7 +14,11 @@ const withLanguage = <T>(language: string, run: () => T): T => {
 describe("English", () => {
   test("is the default outside a Chinese locale", () => {
     expect(getLocale()).toBe("en");
-    expect(strings().cmdSearchGlobally).toBe("Search obsidian globally");
+    expect(strings().cmdSearchGlobally).toBe("Search Obsidian globally");
+    expect(strings().cmdSearchGloballyState).toBe(
+      "Search Obsidian globally (with last state)",
+    );
+    expect(strings().ribbonSearch).toBe(strings().cmdSearchGlobally);
   });
 
   test("parameterised messages take their argument", () => {

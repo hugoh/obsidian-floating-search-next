@@ -49,3 +49,60 @@ export async function resetPlugin() {
   }, PLUGIN_ID);
   await waitForPlugin();
 }
+
+const TITLES = ".search-open-modal .search-result-file-title";
+
+export async function waitForResults() {
+  await browser.waitUntil(async () => (await browser.$$(TITLES)).length > 0, {
+    timeout: 15_000,
+    timeoutMsg: "the search returned no results",
+  });
+}
+
+/** Opens the global search and types a query into it. */
+export async function searchFor(query: string) {
+  await waitForPlugin();
+  await browser.executeObsidianCommand(`${PLUGIN_ID}:search-obsidian-globally`);
+  const input = browser.$(".search-open-modal .search-input-container input");
+  await input.waitForExist();
+  await browser.waitUntil(() => input.isFocused(), {
+    timeoutMsg: "the search input never received focus",
+  });
+  await browser.keys(query.split(""));
+}
+
+/** Moves to the first result and returns the path of the file it stands for. */
+export async function focusFirstResult(): Promise<string> {
+  await browser.keys(["ArrowDown"]);
+  let focused: string | undefined;
+  await browser.waitUntil(
+    async () => {
+      focused = await browser.executeObsidian(
+        ({ app }, id) =>
+          app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
+            ?.path,
+        PLUGIN_ID,
+      );
+      return focused !== undefined;
+    },
+    { timeoutMsg: "no result received focus" },
+  );
+  return focused as string;
+}
+
+/** Sends a key straight to the search input, whatever has focus. */
+export async function pressInSearchInput(init: KeyboardEventInit) {
+  await browser.execute(
+    (selector, eventInit) => {
+      document.querySelector<HTMLInputElement>(selector)?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          ...eventInit,
+        }),
+      );
+    },
+    ".search-open-modal .search-input-container input",
+    init,
+  );
+}

@@ -6,6 +6,7 @@ export default defineConfig(
 	globalIgnores([
     "tests",
 		"node_modules",
+		".obsidian-cache",
 		"main.js",
 		"eslint.config.mjs",
 		"esbuild.config.mjs",

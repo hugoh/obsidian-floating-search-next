@@ -1,4 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>hugoh/renovate-config"]
+  "extends": ["github>hugoh/renovate-config"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "The Recent Files plugin version the e2e tests install (test/wdio.conf.mts)",
+      "managerFilePatterns": ["/^test/wdio\\.conf\\.mts$/"],
+      "matchStrings": [
+        "RECENT_FILES_VERSION\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "packageNameTemplate": "tgrosinger/recent-files-obsidian",
+      "extractVersionTemplate": "^v?(?<version>.*)$",
+      "versioningTemplate": "semver"
+    }
+  ]
 }

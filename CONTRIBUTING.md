@@ -22,7 +22,10 @@ bun run build      # typecheck + production bundle
 hk check --all     # everything CI runs
 ```
 
-`test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored) and uses
+`test:e2e` downloads Obsidian into `.obsidian-cache/` (gitignored), along with the
+Recent Files community plugin that the recent-files specs run against (installed
+disabled, pinned by `RECENT_FILES_VERSION` in `test/wdio.conf.mts`; Renovate keeps the
+pin current, so a failing recent-files spec after a bump means the plugin changed). It uses
 [wdio-obsidian-service](https://github.com/jesse-r-s-hines/wdio-obsidian-service).
 By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
@@ -35,8 +38,6 @@ Plugin text lives in `src/i18n.ts`, in one typed object per language. English
 (`zh-TW`, `zh-HK`) currently falls back to English.
 
 1. Copy the `EN` block, rename it (for example `JA`) and translate every message.
-   Leave key labels such as `Shift+↑↓` alone. Messages that are functions (for
-   example a message that includes a name) keep their arguments.
 2. Add the language to the `Locale` type and to `TRANSLATIONS`, and teach
    `resolveLocale` its Obsidian language code (`ja`, `fr`, ...). Obsidian reports
    Simplified Chinese as `zh` and Traditional as `zh-TW`.
@@ -53,10 +54,11 @@ Obsidian requires the release tag to equal `manifest.json`'s `version` (with no
 `v` prefix), and it reads that version from the default branch. Releases are
 driven by [release-please](https://github.com/googleapis/release-please) from
 Conventional Commits: it keeps a release PR that bumps `manifest.json` and
-`package.json`. Merging it tags the release and opens a draft; the `release`
-workflow builds with a frozen lockfile, runs the tests and lint, attests
-`main.js`, attaches `main.js` and `manifest.json`, and only then publishes the
-draft, so Obsidian never sees a version without assets.
+`package.json`. Merging it tags the release and opens a draft. The `publish`
+job in `.github/workflows/ci.yml` then builds with a frozen lockfile, runs the
+tests and lint, attests `main.js`, `manifest.json` and `styles.css`, attaches
+all three, and only then publishes the draft, so Obsidian never sees a version
+without assets.
 
 The workflow needs a GitHub App (so the release PR triggers CI): set the
 repository variable `RELEASE_APP_CLIENT_ID` and the secret
