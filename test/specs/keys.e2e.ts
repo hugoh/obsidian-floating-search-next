@@ -102,6 +102,23 @@ describe("Search & Open keys", () => {
     await settled({ collapsed: false });
   });
 
+  it("moves the caret with Left and Right, even with a result focused", async () => {
+    await results();
+    await browser.keys(["ArrowDown"]);
+    await settled({ kind: "file" });
+    const caret = () =>
+      browser.execute(
+        (selector) =>
+          document.querySelector<HTMLInputElement>(selector)?.selectionStart,
+        INPUT,
+      );
+    const end = await caret();
+    await browser.keys(["ArrowLeft", "ArrowLeft"]);
+    expect(await caret()).toBe((end ?? 0) - 2);
+    await browser.keys(["ArrowRight"]);
+    expect(await caret()).toBe((end ?? 0) - 1);
+  });
+
   it("ignores keys pressed while composing text", async () => {
     await results();
     await pressInSearchInput({ key: "ArrowDown", isComposing: true });

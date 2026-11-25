@@ -308,8 +308,6 @@ export class SearchOpenModal extends Modal {
       this.moveUp(e);
       return false;
     });
-    on(null, "ArrowLeft", (e) => this.searchView.onKeyArrowLeftInFocus(e));
-    on(null, "ArrowRight", (e) => this.searchView.onKeyArrowRightInFocus(e));
     on(null, "Enter", (e) => this.openFocused(e));
     on(null, "Tab", (e) => {
       if (e.shiftKey && this.fileLeaf) {

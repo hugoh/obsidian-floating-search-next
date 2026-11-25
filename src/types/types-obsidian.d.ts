@@ -31,8 +31,6 @@ declare module "obsidian" {
   }
 
   interface SearchView extends View {
-    onKeyArrowRightInFocus(e: KeyboardEvent): void;
-    onKeyArrowLeftInFocus(e: KeyboardEvent): void;
     onKeyArrowUpInFocus(e: KeyboardEvent): void;
     onKeyArrowDownInFocus(e: KeyboardEvent): void;
     onKeyEnterInFocus(e: KeyboardEvent): void;

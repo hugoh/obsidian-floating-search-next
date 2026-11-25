@@ -171,7 +171,10 @@ Fixes made after the plugin was narrowed:
   keys are now bound with the modal's `Scope` (one handler per key, forwarding to the
   search view), which fixes them. Handlers ignore events from outside the search box
   (the preview keeps its arrow keys) and while text is being composed. Ctrl+Shift+N and
-  Ctrl+Shift+P no longer expand context; the documented Shift+Up and Shift+Down do. The
+  Ctrl+Shift+P no longer expand context; the documented Shift+Up and Shift+Down do.
+  Left and Right are no longer forwarded to the search view (they did nothing visible
+  with real key presses, and the README never documented them), so they move the caret
+  as in any text field (e2e). The
   operator suggestion menu now gets its keys before the result navigation (e2e,
   `keys.e2e.ts`).
 
