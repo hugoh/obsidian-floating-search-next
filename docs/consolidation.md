@@ -161,10 +161,10 @@ Fixes made after the plugin was narrowed:
   guards that). Two are kept because removing them changed behavior: `getRoot` (the
   embedded leaves would no longer resolve to the workspace root) and `getLeaf` (a link
   clicked in the preview would open the note in a background tab of the workspace).
-- Known gap: the README says a link clicked in the preview replaces the previewed
-  file. In Obsidian 1.15.1 it does nothing (the patched `getLeaf` returns the preview
-  leaf, but the note is not opened in it), pinned or not. The e2e spec only guards that
-  nothing opens in the workspace.
+- The README used to say a link clicked in the preview replaces the previewed file.
+  In Obsidian 1.15.1 it does nothing (the patched `getLeaf` returns the preview leaf,
+  but the note is not opened in it), pinned or not, so the claim was dropped. The e2e
+  spec guards that the click opens nothing in the workspace.
 
 ## Tooling decisions
 

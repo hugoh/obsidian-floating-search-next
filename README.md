@@ -56,7 +56,6 @@ BRAT also keeps the plugin up to date.
     - While a file is previewed, clicking another result switches the preview instead of closing the popup; Alt+click opens the file and closes the popup;
     - With no preview, clicking a result closes the popup and navigates to the file, as in Obsidian's own search.
 4. **`obsidian://fs?query=xxxxxx`** opens the popup with that query, so you can start a search from outside Obsidian.
-5. Clicking a link inside the preview replaces the previewed file.
 
 ## Settings
 
