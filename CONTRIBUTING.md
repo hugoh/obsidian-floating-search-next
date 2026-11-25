@@ -18,6 +18,7 @@ bun run test:e2e   # builds, then runs the plugin in a real Obsidian
 bun run screenshot # retakes media/screenshot.png for the README
 bun run lint       # eslint-plugin-obsidianmd, the rules the plugin review applies
 bun run typecheck  # plugin, unit tests and e2e specs
+bun run knip       # unused files, exports and dependencies (see knip.json)
 bun run build      # typecheck + production bundle
 hk check --all     # everything CI runs
 ```

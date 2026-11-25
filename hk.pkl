@@ -26,6 +26,11 @@ local linters = new Mapping<String, Step> {
         glob = List("package.json", "bun.lock")
         check = "bun audit"
     }
+    // unused files, exports and dependencies; see knip.json
+    ["knip"] {
+        glob = List("src/**/*.ts", "test/**/*.ts", "tests/**", "scripts/**", "knip.json", "package.json", "bun.lock")
+        check = "bun run knip"
+    }
     ["typecheck"] {
         glob = List("**/*.ts", "**/*.mts", "tsconfig*.json", "test/tsconfig.json")
         check = "bun run typecheck"
