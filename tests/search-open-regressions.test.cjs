@@ -210,3 +210,42 @@ test('closing before the search view took its state reports no state to save', a
   assert.equal(settled.length, 1);
   assert.equal(settled[0].state.query, 'needle');
 });
+
+function canvasPreview(h, { showing }) {
+  const selected = [];
+  const nodes = [{ id: 'a', text: 'first' }, { id: 'b', text: 'second' }];
+  const canvas = {
+    data: { nodes },
+    nodes: new Map(nodes.map((node) => [node.id, node])),
+    selectOnly: (node) => selected.push(node.text),
+    zoomToSelection: () => selected.push('zoomed'),
+  };
+  const file = new h.TFile('board.canvas');
+  const leaf = h.makeLeaf();
+  const loaded = deferred();
+  leaf.openFile = () => loaded.promise.then(() => { leaf.view = { ...leaf.view, canvas, file: showing(file) }; });
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  return { modal, file, selected, loaded };
+}
+
+test('the matching canvas card is selected once the canvas has loaded, however long that takes', async () => {
+  const h = createHarness();
+  const { modal, file, selected, loaded } = canvasPreview(h, { showing: (f) => f });
+  const preview = modal.initFileView(file, { match: { content: 'second', matches: [] } });
+  await h.clock.tick(500);
+  assert.deepEqual(selected, [], 'nothing can be selected before the canvas exists');
+  loaded.resolve();
+  await preview;
+  assert.deepEqual(selected, ['second', 'zoomed']);
+});
+
+test('a canvas leaf still showing another file gets no card selected', async () => {
+  const h = createHarness();
+  const { modal, file, selected, loaded } = canvasPreview(h, { showing: () => new h.TFile('other.canvas') });
+  const preview = modal.initFileView(file, { match: { content: 'first', matches: [] } });
+  loaded.resolve();
+  await preview;
+  assert.deepEqual(selected, []);
+});

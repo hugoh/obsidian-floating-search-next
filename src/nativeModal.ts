@@ -9,6 +9,7 @@ import {
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
+import { selectMatchedCard } from "./canvasSelection";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
 import { EmbeddedView } from "./leafView";
@@ -446,16 +447,17 @@ export class SearchOpenModal extends Modal {
   }
 
   /** The preview is only ever shown in reading mode, never as an editor. */
-  private openReadOnly(
+  private async openReadOnly(
     leaf: WorkspaceLeaf,
     file: TFile,
     state: PreviewState | undefined,
   ) {
-    return leaf.openFile(file, {
+    await leaf.openFile(file, {
       active: false,
       state: { mode: "preview" },
       eState: state,
     });
+    selectMatchedCard(leaf, file, state?.match?.content);
   }
 
   private markPreviewMatch(state: PreviewState | undefined) {

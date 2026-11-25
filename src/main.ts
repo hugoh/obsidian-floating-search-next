@@ -4,7 +4,6 @@ import {
   type DragManager,
   debounce,
   type ObsidianProtocolData,
-  type OpenViewState,
   Plugin,
   TFile,
   View,
@@ -21,44 +20,9 @@ import {
 } from "./settings";
 import { SearchOpenSettingTab } from "./settingsTab";
 
-interface CanvasNode {
-  id: string;
-  text?: string;
-}
-
-/** The slice of a Canvas view used to select the matched card in a preview. */
-interface CanvasLeafView {
-  canvas?: {
-    data: { nodes?: CanvasNode[] };
-    nodes: Map<string, CanvasNode>;
-    selectOnly(node: CanvasNode): void;
-    zoomToSelection(): void;
-  };
-}
-
 /** The current (leaf, params) form of Workspace.setActiveLeaf. */
 interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
-}
-
-/** Selects and zooms to the canvas card whose text a search result matched. */
-function selectMatchedCard(
-  leaf: WorkspaceLeaf,
-  file: TFile,
-  openState?: OpenViewState,
-) {
-  const view = leaf.view as CanvasLeafView & { file?: TFile };
-  if (view.file !== file || !view.canvas) return;
-  const wanted = (
-    openState?.eState as { match?: { content?: string } } | undefined
-  )?.match?.content;
-  if (wanted === undefined) return;
-  const { canvas } = view;
-  const found = canvas.data.nodes?.find((node) => node.text === wanted);
-  const card = found && canvas.nodes.get(found.id);
-  if (!card) return;
-  canvas.selectOnly(card);
-  canvas.zoomToSelection();
 }
 
 /** Runs `fn` until it has completed once; a run that throws is retried. */
@@ -213,19 +177,6 @@ export default class SearchOpenPlugin extends Plugin {
           return function (this: WorkspaceLeaf, pinned: boolean) {
             old.call(this, pinned);
             if (isEmbeddedLeaf(this) && !pinned) this.setPinned(true);
-          };
-        },
-        openFile(old) {
-          return function (
-            this: WorkspaceLeaf,
-            file: TFile,
-            openState?: OpenViewState,
-          ) {
-            const opened = old.call(this, file, openState);
-            if (!isEmbeddedLeaf(this) || file.extension !== "canvas") {
-              return opened;
-            }
-            return opened.then(() => selectMatchedCard(this, file, openState));
           };
         },
       }),

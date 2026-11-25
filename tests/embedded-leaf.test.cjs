@@ -194,50 +194,13 @@ test('holding back the Recent Files plugin does nothing when it is not installed
   assert.doesNotThrow(release);
 });
 
-test('the matching canvas card is selected once the canvas has loaded, however long that takes', async () => {
+test('the leaf patch leaves openFile alone', () => {
   const h = createHarness();
   const { WorkspaceLeaf } = h.obsidian;
-  const loaded = { resolve: undefined };
-  WorkspaceLeaf.prototype.openFile = function () {
-    return new Promise((resolve) => { loaded.resolve = () => { this.view = { canvas, file }; resolve(); }; });
-  };
-  const selected = [];
-  const nodes = [{ id: 'a', text: 'first' }, { id: 'b', text: 'second' }];
-  const canvas = {
-    data: { nodes },
-    nodes: new Map(nodes.map((node) => [node.id, node])),
-    selectOnly: (node) => selected.push(node.text),
-    zoomToSelection: () => selected.push('zoomed'),
-  };
-  const file = { extension: 'canvas' };
+  const original = function () { return Promise.resolve(); };
+  WorkspaceLeaf.prototype.openFile = original;
   const uninstallers = [];
   h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
-  h.leafModule.isEmbeddedLeaf = () => true;
-
-  const leaf = Object.create(WorkspaceLeaf.prototype);
-  const opening = leaf.openFile(file, { eState: { match: { content: 'second' } } });
-  await h.clock.tick(500);
-  assert.deepEqual(selected, [], 'nothing can be selected before the canvas exists');
-  loaded.resolve();
-  await opening;
-  assert.deepEqual(selected, ['second', 'zoomed']);
-  uninstallers.forEach((fn) => fn());
-});
-
-test('an older open that finishes late does not select a card in the newer file', async () => {
-  const h = createHarness();
-  const { WorkspaceLeaf } = h.obsidian;
-  const selected = [];
-  const canvas = { data: { nodes: [{ id: 'a', text: 'card' }] }, nodes: new Map([['a', { id: 'a', text: 'card' }]]), selectOnly: () => selected.push('selected'), zoomToSelection() {} };
-  const first = { extension: 'canvas' };
-  const second = { extension: 'canvas' };
-  WorkspaceLeaf.prototype.openFile = function () { return Promise.resolve(); };
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
-  h.leafModule.isEmbeddedLeaf = () => true;
-  const leaf = Object.create(WorkspaceLeaf.prototype);
-  leaf.view = { canvas, file: second };
-  await leaf.openFile(first, { eState: { match: { content: 'card' } } });
-  assert.deepEqual(selected, [], 'the leaf already shows another file');
+  assert.equal(WorkspaceLeaf.prototype.openFile, original);
   uninstallers.forEach((fn) => fn());
 });
