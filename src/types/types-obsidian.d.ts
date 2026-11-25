@@ -10,11 +10,6 @@ declare module "obsidian" {
         };
       };
     };
-    dragManager?: DragManager;
-  }
-
-  interface DragManager {
-    dragFile(event: DragEvent, file: TFile): unknown;
   }
 
   interface SearchResultItem {

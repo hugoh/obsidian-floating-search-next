@@ -1,7 +1,6 @@
 import { around } from "monkey-around";
 import {
   addIcon,
-  type DragManager,
   debounce,
   type ObsidianProtocolData,
   Plugin,
@@ -80,7 +79,6 @@ export default class SearchOpenPlugin extends Plugin {
     this.patchWorkspace();
     this.patchWorkspaceLeaf();
     this.patchRecentFileTracker();
-    this.patchDragManager();
   });
 
   /** The sanitized settings never hold a query, so a search opens global. */
@@ -224,28 +222,6 @@ export default class SearchOpenPlugin extends Plugin {
           return !modal.hasPreviewed(file) && old.call(this, file);
         },
     });
-  }
-
-  patchDragManager() {
-    const manager = this.app.dragManager;
-    if (!manager) return;
-    // Keep the plugin receiver across native method wrappers.
-    // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
-    const self = this;
-
-    this.register(
-      around(Object.getPrototypeOf(manager) as DragManager, {
-        dragFile(old) {
-          return function (e: DragEvent, a: TFile) {
-            const result = old.call(this, e, a);
-
-            const modal = self.modal;
-            window.setTimeout(() => modal?.close(), 10);
-            return result;
-          };
-        },
-      }),
-    );
   }
 
   registerObsidianURIHandler() {

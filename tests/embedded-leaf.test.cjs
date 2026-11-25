@@ -121,22 +121,6 @@ test('an embedded leaf stays pinned, a normal one does not', () => {
   uninstallers.forEach((fn) => fn());
 });
 
-test('dragging a file closes the modal that was open, not one opened a moment later', async () => {
-  const h = createHarness();
-  const manager = Object.create({ dragFile() { return 'dragged'; } });
-  const closed = [];
-  const first = { close() { closed.push('first'); } };
-  const second = { close() { closed.push('second'); } };
-  const uninstallers = [];
-  const plugin = { app: { dragManager: manager }, modal: first, register: (fn) => uninstallers.push(fn) };
-  h.default.prototype.patchDragManager.call(plugin);
-  assert.equal(manager.dragFile({}, {}), 'dragged');
-  plugin.modal = second;
-  await h.clock.tick(20);
-  assert.deepEqual(closed, ['first']);
-  uninstallers.forEach((fn) => fn());
-});
-
 test('a failed patch run is retried on the next open instead of being marked done', () => {
   const h = createHarness();
   let attempts = 0;

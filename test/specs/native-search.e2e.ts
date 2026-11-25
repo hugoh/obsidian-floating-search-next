@@ -270,6 +270,19 @@ describe("Search & Open modal", () => {
       .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
   });
 
+  it("closes the modal when a result is dragged out", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.execute((selector) => {
+      document
+        .querySelector(selector)
+        ?.dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
+    }, TITLES);
+    await browser
+      .$(".search-open-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+  });
+
   it("opens the focused result in a new tab on Mod+Enter", async () => {
     await waitForPlugin();
     await browser.executeObsidian(async ({ app }) => {

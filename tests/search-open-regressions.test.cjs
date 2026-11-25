@@ -249,3 +249,37 @@ test('a canvas leaf still showing another file gets no card selected', async () 
   await preview;
   assert.deepEqual(selected, []);
 });
+
+async function openedModal(h) {
+  h.leafModule.nextLeaf = h.makeLeaf();
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  await modal.open();
+  return modal;
+}
+
+test('dragging a result out of the modal closes it, once the drag has started', async () => {
+  const h = createHarness();
+  const modal = await openedModal(h);
+  modal.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: (selector) => (selector === '.tree-item' ? {} : null) } });
+  assert.equal(modal.isOpen, true, 'closing at once would cancel the drag');
+  await h.clock.tick(20);
+  assert.equal(modal.isOpen, false);
+});
+
+test('dragging something that is not a result leaves the modal open', async () => {
+  const h = createHarness();
+  const modal = await openedModal(h);
+  modal.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: () => null } });
+  await h.clock.tick(20);
+  assert.equal(modal.isOpen, true);
+});
+
+test('a drag that outlives its modal does not close the next one', async () => {
+  const h = createHarness();
+  const first = await openedModal(h);
+  first.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: () => ({}) } });
+  first.close();
+  const second = await openedModal(h);
+  await h.clock.tick(20);
+  assert.equal(second.isOpen, true);
+});

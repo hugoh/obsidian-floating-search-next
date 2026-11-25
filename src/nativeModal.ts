@@ -150,6 +150,19 @@ export class SearchOpenModal extends Modal {
     }
     this.initInput();
     this.initContent();
+    this.closeOnResultDrag();
+  }
+
+  /**
+   * Dragging a result into the workspace leaves the modal in the way. It closes
+   * once the drag has started: removing the drag source sooner cancels it.
+   */
+  private closeOnResultDrag() {
+    this.searchCtnEl.addEventListener("dragstart", (e) => {
+      const target = e.target as Element | null;
+      if (!target?.closest(".tree-item")) return;
+      window.setTimeout(() => this.close(), 10);
+    });
   }
 
   onClose() {
