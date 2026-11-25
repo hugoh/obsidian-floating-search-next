@@ -169,7 +169,6 @@ function createHarness() {
   function makeLeaf() {
     const leaf = {
       opened: [], viewStates: [], ephemeralStates: [], detached: false,
-      setPinned() {},
       async openFile(file, options) { this.opened.push({ file, options }); },
       async setViewState(state) { this.viewStates.push(state); },
       setEphemeralState(state) { this.ephemeralStates.push(state); },

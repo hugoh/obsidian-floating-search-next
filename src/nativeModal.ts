@@ -209,7 +209,6 @@ export class SearchOpenModal extends Modal {
     this.searchEmbeddedView = new EmbeddedView(contentEl, this.plugin);
     this.searchLeaf = this.searchEmbeddedView.leaf;
 
-    this.searchLeaf.setPinned(true);
     const initialQuery = this.state.query ?? "";
     const initialState = { ...this.state, query: initialQuery };
     await this.searchLeaf.setViewState({
@@ -535,7 +534,6 @@ export class SearchOpenModal extends Modal {
     this.fileEmbeddedView = new EmbeddedView(this.fileEl, this.plugin);
     this.fileLeaf = this.fileEmbeddedView.leaf;
 
-    this.fileLeaf.setPinned(true);
     await this.openReadOnly(this.fileLeaf, file, state);
     if (this.closed || !isCurrent()) return;
     this.markPreviewMatch(state);

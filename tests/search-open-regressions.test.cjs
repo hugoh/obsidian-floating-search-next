@@ -299,15 +299,13 @@ function pluginIn(h) {
 function patchableMethods(h) {
   const { Workspace, WorkspaceLeaf } = h.obsidian;
   const originals = {
-    getLeaf: function () {}, pushUndoHistory: function () {},
-    setPinned: function () {}, getRoot: function () {},
+    getLeaf: function () {}, pushUndoHistory: function () {}, getRoot: function () {},
   };
   Object.assign(Workspace.prototype, { getLeaf: originals.getLeaf, pushUndoHistory: originals.pushUndoHistory });
-  Object.assign(WorkspaceLeaf.prototype, { setPinned: originals.setPinned, getRoot: originals.getRoot });
+  Object.assign(WorkspaceLeaf.prototype, { getRoot: originals.getRoot });
   const untouched = () =>
     Workspace.prototype.getLeaf === originals.getLeaf &&
     Workspace.prototype.pushUndoHistory === originals.pushUndoHistory &&
-    WorkspaceLeaf.prototype.setPinned === originals.setPinned &&
     WorkspaceLeaf.prototype.getRoot === originals.getRoot &&
     !Object.hasOwn(Workspace.prototype, 'setActiveLeaf');
   return { untouched };

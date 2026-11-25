@@ -154,16 +154,17 @@ Fixes made after the plugin was narrowed:
   leaves are detached first and the patches released last, and the undo-history patch
   now skips every embedded leaf, not only search views (node tests, e2e).
 - Each inherited patch was removed in turn and the e2e suite run against the real
-  Obsidian. Two had no observable effect and are gone: the `setPinned` guard (the
-  preview is still pinned when created) and the `setActiveLeaf` wrapper that called
-  `old` twice and set `activeTime = 1700000000000` (embedded leaves are not in the
-  workspace's root split, so `getMostRecentLeaf` never returns them; an e2e spec now
-  guards that). Two are kept because removing them changed behavior: `getRoot` (the
-  embedded leaves would no longer resolve to the workspace root) and `getLeaf` (a link
-  clicked in the preview would open the note in a background tab of the workspace).
+  Obsidian. Two had no observable effect and are gone: the `setPinned` guard and the
+  `setActiveLeaf` wrapper that called `old` twice and set `activeTime = 1700000000000`
+  (embedded leaves are not in the workspace's root split, so `getMostRecentLeaf` never
+  returns them; an e2e spec now guards that). The leaves are no longer pinned when
+  created either: with and without the pin, the full e2e suite behaves the same. Two
+  patches are kept because removing them changed behavior: `getRoot` (the embedded
+  leaves would no longer resolve to the workspace root) and `getLeaf` (a link clicked
+  in the preview would open the note in a background tab of the workspace).
 - The README used to say a link clicked in the preview replaces the previewed file.
   In Obsidian 1.15.1 it does nothing (the patched `getLeaf` returns the preview leaf,
-  but the note is not opened in it), pinned or not, so the claim was dropped. The e2e
+  but the note is not opened in it), so the claim was dropped. The e2e
   spec guards that the click opens nothing in the workspace.
 - The search box keys were one `onkeydown` switch of about 90 lines on the input, and
   Ctrl+N and Ctrl+P did nothing: the handler called `preventDefault` before forwarding
