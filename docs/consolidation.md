@@ -29,6 +29,28 @@ renamed identifiers push the share up; treat the numbers as a rough guide, not a
 Since then `leafView.ts` was cut from 627 to about 90 lines, the typings from 299 to
 about 70, and the harness was trimmed, so the upstream share has dropped further.
 
+Measured again later, against upstream 4.4.1 only (the two other forks were not
+included, so it is a lower bound on inherited code): about 870 non-trivial lines in
+`src/*.ts` (tests excluded) and `styles.css`, of which 228 (26%) appear verbatim in
+upstream. Upstream itself is about 3,800 lines of `.ts` and `.css`, so roughly a tenth
+of it survives.
+
+| File | Lines found in upstream |
+|---|---|
+| `nativeModal.ts` | 20% (70 of 357) |
+| `main.ts` | 38% (78 of 204) |
+| `leafView.ts` | 33% (18 of 55) |
+| `settings.ts`, `settingsTab.ts` | 29% |
+| `styles.css` | 51% (35 of 68) |
+| `i18n.ts`, `latestQueue.ts`, `matchHighlight.ts` | about 0% (new here) |
+
+The same caveat applies: reformatting and renamed identifiers count as new code, so
+the true share is somewhat higher. What is left of upstream is the architecture (one
+modal wrapping Obsidian's search view, an embedded preview leaf, the `obsidian://fs`
+handler, the key handling) more than the text. This is a derivative with its own
+scope, tests and release pipeline rather than a fork that tracks upstream, and it
+cannot be merged back as a pull request.
+
 Hover Editor's code reaches this repository through Floating Search: `leafView.ts`
 and the `getRoot` patch in `main.ts` are its code (the patch verified against its
 `main.ts`). Its recent-files hook, also inherited, was removed: it patched a method
@@ -44,6 +66,7 @@ that Obsidian no longer has.
 | Preview and file-opening lifecycle fixes, regression test harness | AiurArtanis | Kept (a handful of its 23 tests remain, adapted) |
 | Crash guard for highlights in embedded previews | Peingxious | Removed (the preview is read-only reading mode, with no editor) |
 | Patches applied on first use, not at startup | Peingxious | Kept |
+| Matched text kept marked in the reading-mode preview (CSS Custom Highlight API, `src/matchHighlight.ts`) | Written here | Kept |
 | CMDK quick search, quick create | Upstream, reworked by both forks | Removed |
 | Filter bar (Bases, Canvas, starred, match case, regex) | AiurArtanis | Removed |
 | Exclude folders / files, saved searches, query-syntax engine, content cache | Peingxious | Removed |
@@ -108,6 +131,17 @@ Fixes made after the plugin was narrowed:
 - After a plain arrow key Obsidian blurs the search input and focus stayed on the page
   body until the preview finished, so Enter or typing in that window went nowhere
   (e2e).
+- Typing with a preview open lost every character after the first: detaching the
+  preview leaf made Obsidian drop focus to the page. The input is refocused once the
+  preview is cleared (e2e: a second search with a preview open, previewing one of its
+  results, and checking the typed query reached the input).
+- Reading mode only flashes the matched block, so the match disappeared once the flash
+  faded. The matched text inside that block is now marked with the CSS Custom Highlight
+  API until the preview changes or closes (`src/matchHighlight.ts`, unit tests, e2e).
+- That highlight used `--text-highlight-bg`, which Obsidian does not define, so it
+  computed to a transparent background and only Obsidian's own flash was visible. It
+  now uses `--highlight-background` with a yellow fallback, and an e2e spec checks the
+  highlight is actually painted.
 
 ## Tooling decisions
 
@@ -120,6 +154,9 @@ Fixes made after the plugin was narrowed:
   see `tests/README.md`), and e2e specs in `test/specs/` that run the built plugin in a
   real Obsidian through `wdio-obsidian-service`. `bun run screenshot` retakes the README
   screenshot from `test/screenshots/` in its own vault.
+- `bun run test:e2e:container` runs the e2e suite in a Linux container under a virtual
+  display (Apple's `container`, Docker or Podman; `scripts/e2e-container.sh`,
+  `test/container/`), so no Obsidian window opens on the developer's machine.
 - The e2e tests install the Recent Files community plugin (disabled, pinned by
   `RECENT_FILES_VERSION` in `test/wdio.conf.mts`). A repo-local Renovate custom manager in
   `.renovaterc.json` reads that constant and bumps it from the plugin's GitHub releases.
@@ -141,9 +178,10 @@ None recorded. The regex-denial-of-service risk belonged to the removed regex fi
   positioned as a successor, then Pane Search (`pane-search`), and was renamed once
   it narrowed to opening the file that matches a search. The GitHub repository was
   renamed to `hugoh/obsidian-search-open` at the same time (the old URL redirects).
-- For now the plugin is not listed on the Obsidian Community site. Forks need the
-  original author's approval to be listed, so it is installed with BRAT until that is
-  sorted out (see the README).
+- For now the plugin is not listed on the Obsidian Community site. It was listed under
+  an earlier name and withdrawn; as a derivative it needs the original author's
+  approval to be listed (see issue #13), so it is installed with BRAT until
+  that is sorted out (see the README).
 - Installing both at once conflicts (same patched internals, same `obsidian://fs`
   handler); the README advises against running them together.
 - Settings are stored per plugin id, so users start fresh, including anyone who
