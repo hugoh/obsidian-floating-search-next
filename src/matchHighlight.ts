@@ -81,7 +81,10 @@ export function markMatch(
       attributeFilter: ["class"],
     });
   }
-  const giveUp = window.setTimeout(() => observer.disconnect(), GIVE_UP_AFTER_MS);
+  const giveUp = window.setTimeout(
+    () => observer.disconnect(),
+    GIVE_UP_AFTER_MS,
+  );
 
   return () => {
     observer.disconnect();

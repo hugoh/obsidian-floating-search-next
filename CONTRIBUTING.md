@@ -15,6 +15,7 @@ bun install
 bun run dev        # rebuild main.js on change
 bun run test       # unit tests (bun) and regression tests (node)
 bun run test:e2e   # builds, then runs the plugin in a real Obsidian
+bun run test:e2e:container # the same, in a Linux container: no window opens on your screen
 bun run screenshot # retakes media/screenshot.png for the README
 bun run lint       # eslint-plugin-obsidianmd, the rules the plugin review applies
 bun run typecheck  # plugin, unit tests and e2e specs
@@ -31,6 +32,14 @@ pin current, so a failing recent-files spec after a bump means the plugin change
 By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
 example `"1.15.1/earliest latest/latest"`) to test others.
+
+`test:e2e` opens a real Obsidian window and takes focus, so typing elsewhere while it runs
+breaks the specs that wait for focus. `test:e2e:container` runs the same suite under a
+virtual display (as CI does) in Apple's `container` CLI, Docker or Podman, whichever is
+installed first, so it can run while you work. It builds `test/container/Containerfile`,
+copies the project in, installs dependencies for Linux and keeps its own downloads in
+`.obsidian-cache/container/`. Arguments go to wdio, for example
+`bun run test:e2e:container -- --spec ./test/specs/settings.e2e.ts`.
 
 ## Releasing
 
