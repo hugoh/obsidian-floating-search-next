@@ -395,51 +395,33 @@ export class SearchOpenModal extends Modal {
       const resultElement = contentEl.getElementsByClassName(
         "search-results-children",
       )[0];
-      if (!resultElement || resultElement.children.length < 2) {
-        return;
-      }
+      if (!resultElement || resultElement.children.length < 2) return;
 
-      let targetElement = e.target as HTMLElement | null;
+      const target = e.target as HTMLElement | null;
 
+      // Without a preview, or with Alt held, clicking a result opens it.
       if (e.altKey || !this.fileLeaf) {
-        while (targetElement) {
-          if (targetElement.classList.contains("tree-item-icon")) {
-            break;
-          }
-          if (targetElement.classList.contains("search-result-hover-button")) {
-            break;
-          }
-          if (targetElement.classList.contains("tree-item")) {
-            this.close();
-            break;
-          }
-          targetElement = targetElement.parentElement;
+        const hit = target?.closest(
+          ".tree-item-icon, .search-result-hover-button, .tree-item",
+        );
+        if (hit?.matches(".tree-item-icon, .search-result-hover-button")) {
+          return;
         }
+        if (hit) this.close();
         return;
       }
 
-      if (this.fileLeaf) {
-        const currentView = this.searchLeaf.view as SearchView;
-
-        if (this.searchCtnEl.contains(targetElement)) {
-          while (targetElement) {
-            if (targetElement.classList.contains("tree-item")) {
-              break;
-            }
-            targetElement = targetElement.parentElement;
-          }
-          if (!targetElement) return;
-
-          for (const [file, item] of currentView.dom.resultDomLookup) {
-            if (item.el !== targetElement) continue;
-            currentView.dom.setFocusedItem(item);
-            void this.initFileView(file, undefined);
-            this.focusSearchInput();
-            break;
-          }
-        }
-
-        return;
+      // Otherwise it previews the clicked result.
+      if (!target || !this.searchCtnEl.contains(target)) return;
+      const row = target.closest(".tree-item");
+      if (!row) return;
+      const view = this.searchLeaf.view as SearchView;
+      for (const [file, item] of view.dom.resultDomLookup) {
+        if (item.el !== row) continue;
+        view.dom.setFocusedItem(item);
+        void this.initFileView(file, undefined);
+        this.focusSearchInput();
+        break;
       }
     };
   }
