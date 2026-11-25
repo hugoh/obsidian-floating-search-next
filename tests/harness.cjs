@@ -164,7 +164,6 @@ function createHarness() {
       // Like Obsidian: "tab" for the modifier alone, false without it.
       isModEvent: (event) => ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey ? 'tab' : false),
     },
-    getLanguage: () => 'en',
   };
   const spawned = [];
   function makeLeaf() {
@@ -210,7 +209,7 @@ function createHarness() {
       require(id) {
         if (id === 'obsidian') return obsidian;
         if (id === './leafView') return leafModule;
-        if (id === './i18n') return { strings: () => ({}) };
+        if (id === './i18n') return { strings: {} };
         if (id.startsWith('./')) return load(id.slice(2));
         if (id === 'monkey-around') return require('monkey-around');
         throw new Error(`Unexpected dependency: ${id}`);

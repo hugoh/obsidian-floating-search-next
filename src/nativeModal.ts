@@ -111,7 +111,7 @@ export class SearchOpenModal extends Modal {
   /** Tells the user something went wrong; the details go to the console. */
   private reportFailure(error: unknown) {
     console.error("Search & Open:", error);
-    new Notice(strings().errorGeneric);
+    new Notice(strings.errorGeneric);
   }
 
   private async build() {
@@ -155,7 +155,7 @@ export class SearchOpenModal extends Modal {
 
   private initInstructions(instructionsEl: HTMLElement) {
     if (!this.plugin.settings.showInstructions) return;
-    const s = strings();
+    const s = strings;
     const hints: [key: string, text: string][] = [
       ["↑↓", s.instrNavigate],
       ["Shift+↑↓", s.instrCollapse],

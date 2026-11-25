@@ -31,23 +31,6 @@ By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
 example `"1.15.1/earliest latest/latest"`) to test others.
 
-## Adding a language
-
-Plugin text lives in `src/i18n.ts`, in one typed object per language. English
-(`EN`) and Simplified Chinese (`ZH`) exist today; Traditional Chinese
-(`zh-TW`, `zh-HK`) currently falls back to English.
-
-1. Copy the `EN` block, rename it (for example `JA`) and translate every message.
-2. Add the language to the `Locale` type and to `TRANSLATIONS`, and teach
-   `resolveLocale` its Obsidian language code (`ja`, `fr`, ...). Obsidian reports
-   Simplified Chinese as `zh` and Traditional as `zh-TW`.
-3. Run `bun run test`. TypeScript refuses a language with a missing message, and
-   `src/i18n.test.ts` checks the language is complete and has no empty strings.
-
-Please translate by hand or have a native speaker review the result: a missing
-translation falls back to English, which is better than a wrong one. Mention
-the language in the pull request so the README can list it.
-
 ## Releasing
 
 Obsidian requires the release tag to equal `manifest.json`'s `version` (with no

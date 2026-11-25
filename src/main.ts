@@ -87,7 +87,7 @@ export default class SearchOpenPlugin extends Plugin {
     this.registerObsidianURIHandler();
     this.registerObsidianCommands();
 
-    this.addRibbonIcon("search-open-window", strings().ribbonSearch, () =>
+    this.addRibbonIcon("search-open-window", strings.ribbonSearch, () =>
       this.initModal({ ...this.state, query: "" }),
     );
     this.addSettingTab(new SearchOpenSettingTab(this.app, this));
@@ -341,13 +341,13 @@ export default class SearchOpenPlugin extends Plugin {
   registerObsidianCommands() {
     this.addCommand({
       id: "search-obsidian-globally",
-      name: strings().cmdSearchGlobally,
+      name: strings.cmdSearchGlobally,
       callback: () => this.initModal({ ...this.state, query: "" }),
     });
 
     this.addCommand({
       id: "search-obsidian-globally-state",
-      name: strings().cmdSearchGloballyState,
+      name: strings.cmdSearchGloballyState,
       callback: () => this.initModal(this.state, this.lastCaret),
     });
   }

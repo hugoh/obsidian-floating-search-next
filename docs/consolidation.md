@@ -40,7 +40,7 @@ that Obsidian no longer has.
 |---|---|---|
 | Floating search modal, preview pane, key navigation, `obsidian://fs` | Upstream (Quorafind) 4.3.0 | Kept |
 | IME composition guard | AiurArtanis | Kept |
-| zh-CN / en localization (typed `strings()`) | AiurArtanis | Kept |
+| zh-CN / en localization (typed `strings()`) | AiurArtanis | Removed (English only; messages stay in `src/i18n.ts`) |
 | Preview and file-opening lifecycle fixes, regression test harness | AiurArtanis | Kept (a handful of its 23 tests remain, adapted) |
 | Crash guard for highlights in embedded previews | Peingxious | Kept |
 | Patches applied on first use, not at startup | Peingxious | Kept |
@@ -72,7 +72,6 @@ All sources are GPL-3.0; see `LICENSE` and `NOTICE`.
 | The last search text was written to `data.json` in plaintext | The whole view state was saved | The query is never persisted or restored | `settings.test.ts`, e2e |
 | Release builds were not reproducible or hardened, and releases left out `styles.css` | An old workflow ran `npm install`, used mutable action tags and uploaded only some files | bun with a frozen lockfile, SHA-pinned actions, release-please, attested `main.js`, `manifest.json` and `styles.css`, the full test run before publishing | CI, `release.test.ts` |
 | Lint backlog (446 `eslint-plugin-obsidianmd` problems) and the community scorecard findings that lint missed | Obsidian internals reached through `any`; `:has()` and `!important` in CSS; licence text; advisories | Internals are typed, patches go through `monkey-around`, `LICENSE` is the unmodified GPL, overrides for two advisories; `eslint --max-warnings 0 .` passes | `bun run lint`, `tests/scorecard.test.cjs`, `bun audit` |
-| Traditional Chinese users were shown Simplified Chinese | The check was "language starts with zh" | `resolveLocale` separates them; Traditional falls back to English until translated | `i18n.test.ts` |
 
 Fixes made after the plugin was narrowed:
 
