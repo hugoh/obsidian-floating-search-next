@@ -16,16 +16,14 @@ import type { SearchState } from "./settings";
 
 /**
  * Obsidian opens its search-operator menu whenever the input gains focus.
- * Focus the input again with that one handler skipped, so a restored query
- * does not come back with the menu open.
+ * Focus the input with that one handler skipped, so putting focus back does
+ * not bring the menu up.
  */
-function refocusWithoutSuggestions(inputEl: HTMLInputElement) {
-  inputEl.addEventListener("focus", (e) => e.stopImmediatePropagation(), {
-    capture: true,
-    once: true,
-  });
-  inputEl.blur();
+function focusWithoutSuggestions(inputEl: HTMLInputElement) {
+  const swallow = (e: Event) => e.stopImmediatePropagation();
+  inputEl.addEventListener("focus", swallow, { capture: true });
   inputEl.focus();
+  inputEl.removeEventListener("focus", swallow, { capture: true });
 }
 
 /** Where the cursor and selection sat in the search box. */
@@ -194,7 +192,8 @@ export class SearchOpenModal extends Modal {
     const inputEl = this.searchInput;
     if (!inputEl) return;
     if (this.caret) {
-      refocusWithoutSuggestions(inputEl);
+      inputEl.blur();
+      focusWithoutSuggestions(inputEl);
       const length = inputEl.value.length;
       inputEl.setSelectionRange(
         Math.min(this.caret.start, length),
@@ -210,7 +209,8 @@ export class SearchOpenModal extends Modal {
   }
 
   private focusSearchInput() {
-    this.searchInput?.focus();
+    const inputEl = this.searchInput;
+    if (inputEl) focusWithoutSuggestions(inputEl);
   }
 
   initInput(retries = 10) {
@@ -252,6 +252,8 @@ export class SearchOpenModal extends Modal {
             }
           } else {
             currentView.onKeyArrowDownInFocus(e);
+            // Obsidian blurs the input here; keep it ready for the next key.
+            this.focusSearchInput();
             this.debouncedAutoPreview();
           }
           break;
@@ -269,6 +271,7 @@ export class SearchOpenModal extends Modal {
             }
           } else {
             currentView.onKeyArrowUpInFocus(e);
+            this.focusSearchInput();
             this.debouncedAutoPreview();
           }
           break;

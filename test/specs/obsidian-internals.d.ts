@@ -22,7 +22,7 @@ export interface TestPlugin {
       };
     };
   };
-  applySettingsUpdate(): void;
+  applySettingsUpdate: { (): void; run(): void };
   loadData(): Promise<Record<string, unknown> | null>;
   saveData(data: unknown): Promise<void>;
 }

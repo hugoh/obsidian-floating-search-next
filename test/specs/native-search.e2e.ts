@@ -11,7 +11,7 @@ async function waitForResults() {
   });
 }
 
-describe("Pane native search", () => {
+describe("Search & Open modal", () => {
   afterEach(async () => {
     await closeModals();
     await resetPlugin();
@@ -30,6 +30,25 @@ describe("Pane native search", () => {
     await browser.keys(query.split(""));
   }
 
+  /** Moves to the first result and returns the path of the file it stands for. */
+  async function focusFirstResult(): Promise<string> {
+    await browser.keys(["ArrowDown"]);
+    let focused: string | undefined;
+    await browser.waitUntil(
+      async () => {
+        focused = await browser.executeObsidian(
+          ({ app }, id) =>
+            app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
+              ?.path,
+          PLUGIN_ID,
+        );
+        return focused !== undefined;
+      },
+      { timeoutMsg: "no result received focus" },
+    );
+    return focused as string;
+  }
+
   it("runs Obsidian's search in a modal", async () => {
     await searchFor("pineapple");
     await waitForResults();
@@ -40,16 +59,21 @@ describe("Pane native search", () => {
   it("does not write the search text to disk", async () => {
     await searchFor("topsecretneedle");
     await browser.executeObsidian(({ app }, id) => {
-      app.plugins.plugins[id].modal.close();
-      app.plugins.plugins[id].applySettingsUpdate();
+      const plugin = app.plugins.plugins[id];
+      plugin.modal.close();
+      plugin.applySettingsUpdate.run();
     }, PLUGIN_ID);
-    await browser.pause(1800);
-    const saved = await browser.executeObsidian(
-      async ({ app }, id) =>
-        JSON.stringify(await app.plugins.plugins[id].loadData()),
-      PLUGIN_ID,
+    const loadSaved = () =>
+      browser.executeObsidian(
+        async ({ app }, id) =>
+          JSON.stringify(await app.plugins.plugins[id].loadData()),
+        PLUGIN_ID,
+      );
+    await browser.waitUntil(
+      async () => (await loadSaved()).includes("searchViewState"),
+      { timeoutMsg: "the settings were never saved" },
     );
-    expect(saved).not.toContain("topsecretneedle");
+    expect(await loadSaved()).not.toContain("topsecretneedle");
   });
 
   it("previews the focused result beside the search", async () => {
@@ -104,23 +128,14 @@ describe("Pane native search", () => {
   it("opens the focused result and closes the modal on Enter", async () => {
     await searchFor("pineapple");
     await waitForResults();
-    await browser.keys(["ArrowDown"]);
-    await browser.pause(300);
-    const focusedPath = await browser.executeObsidian(
-      ({ app }, id) =>
-        app.plugins.plugins[id].modal.searchLeaf.view.dom.focusedItem?.file
-          ?.path,
-      PLUGIN_ID,
-    );
-    expect(focusedPath).toBeDefined();
+    const focusedPath = await focusFirstResult();
+    const activePath = () =>
+      browser.executeObsidian(({ app }) => app.workspace.getActiveFile()?.path);
+    expect(await activePath()).not.toBe(focusedPath);
     await browser.keys(["Enter"]);
-    await browser.waitUntil(
-      async () =>
-        (await browser.executeObsidian(
-          ({ app }) => app.workspace.getActiveFile()?.path,
-        )) === focusedPath,
-      { timeoutMsg: `Enter did not open ${focusedPath}` },
-    );
+    await browser.waitUntil(async () => (await activePath()) === focusedPath, {
+      timeoutMsg: `Enter did not open ${focusedPath}`,
+    });
     await browser
       .$(".search-open-modal")
       .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
@@ -133,8 +148,7 @@ describe("Pane native search", () => {
     });
     await searchFor("pineapple");
     await waitForResults();
-    await browser.keys(["ArrowDown"]);
-    await browser.pause(300);
+    await focusFirstResult();
     const before = await browser.executeObsidian(
       ({ app }) => app.workspace.getLeavesOfType("markdown").length,
     );
@@ -257,6 +271,34 @@ describe("Pane native search", () => {
     ).toBe(true);
   });
 
+  it("puts Obsidian's own workspace methods back when the plugin is disabled", async () => {
+    await waitForPlugin();
+    const { patched, restored } = await browser.executeObsidian(
+      async ({ app }, id) => {
+        const proto = Object.getPrototypeOf(app.workspace) as Record<
+          string,
+          unknown
+        >;
+        const methods = [
+          "getLeaf",
+          "pushUndoHistory",
+          "recordMostRecentOpenedFile",
+        ];
+        const native = methods.map((name) => proto[name]);
+        const plugin = app.plugins.plugins[id];
+        plugin.initModal({ ...plugin.state, query: "" });
+        const sameAsNative = () =>
+          methods.every((name, index) => proto[name] === native[index]);
+        const patched = !sameAsNative();
+        await app.plugins.disablePlugin(id);
+        return { patched, restored: sameAsNative() };
+      },
+      PLUGIN_ID,
+    );
+    expect(patched).toBe(true);
+    expect(restored).toBe(true);
+  });
+
   describe("reopening with the last state", () => {
     const INPUT = ".search-open-modal .search-input-container input";
 
@@ -313,6 +355,18 @@ describe("Pane native search", () => {
           timeoutMsg: `the selection changed: ${JSON.stringify(await caret())}`,
         },
       );
+    });
+
+    it("does show the search options menu when you type an operator", async () => {
+      await waitForPlugin();
+      await browser.executeObsidianCommand(
+        `${PLUGIN_ID}:search-obsidian-globally`,
+      );
+      await browser.$(INPUT).waitForExist();
+      await browser.keys(["p", "a"]);
+      await browser
+        .$(".suggestion-container.mod-search-suggestion")
+        .waitForExist({ timeoutMsg: "the control never saw the menu appear" });
     });
 
     it("does not show the search options menu", async () => {

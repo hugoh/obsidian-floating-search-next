@@ -129,7 +129,24 @@ function createHarness() {
   const obsidian = {
     Modal, TFile,
     Plugin: class {}, PluginSettingTab: class {}, addIcon() {}, setIcon() {},
-    Workspace: class {}, WorkspaceLeaf: class {},
+    Workspace: class {}, WorkspaceLeaf: class {}, View: class {},
+    WorkspaceTabs: class { constructor(children = []) { this.children = children; } },
+    WorkspaceSplit: class {
+      constructor(workspace, direction) {
+        this.workspace = workspace;
+        this.direction = direction;
+        this.children = [];
+        this.containerEl = new ElementStub();
+        this.replaced = [];
+      }
+      replaceChild(index, child) { this.replaced.push({ index, child }); this.children[index] = child; }
+    },
+    Component: class {
+      constructor() { this.refs = []; }
+      load() { this.onload?.(); }
+      unload() { this.onunload?.(); this.refs.forEach((ref) => ref.off()); }
+      registerEvent(ref) { this.refs.push(ref); }
+    },
     debounce(callback, delay) {
       let timer;
       const run = function (...args) {
@@ -175,14 +192,15 @@ function createHarness() {
   };
   const sourceRoot = process.env.SEARCH_OPEN_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');
   const loaded = new Map();
-  function load(name) {
-    if (loaded.has(name)) return loaded.get(name);
+  // `fresh` evaluates the real module again instead of the cached copy (or the leafView stub).
+  function load(name, fresh = false) {
+    if (!fresh && loaded.has(name)) return loaded.get(name);
     const filename = path.join(sourceRoot, 'src', `${name}.ts`);
     let source = fs.readFileSync(filename, 'utf8');
 
     const { code } = transformSync(source, { loader: 'ts', format: 'cjs', target: 'node18', sourcefile: filename });
     const module = { exports: {} };
-    loaded.set(name, module.exports);
+    if (!fresh) loaded.set(name, module.exports);
     const context = {
       module, exports: module.exports, console,
       require(id) {
@@ -200,11 +218,24 @@ function createHarness() {
       window: { setTimeout: clock.setTimeout, clearTimeout: clock.clearTimeout }, navigator: { language: 'en' },
     };
     vm.runInNewContext(code, context, { filename });
-    loaded.set(name, module.exports);
+    if (!fresh) loaded.set(name, module.exports);
     return module.exports;
   }
+  const layoutListeners = [];
   const app = {
     workspace: {
+      layoutListeners,
+      on(name, callback) {
+        const ref = { name, callback, off() { layoutListeners.splice(layoutListeners.indexOf(ref), 1); } };
+        layoutListeners.push(ref);
+        return ref;
+      },
+      createLeafInParent(split, index) { return { split, index }; },
+      rootSplit: { root: true },
+      floatingSplit: null,
+      activeView: undefined,
+      getActiveViewOfType() { return this.activeView; },
+      getMostRecentLeaf() { return { mostRecent: true }; },
       activeCalls: [],
       setActiveLeaf(leaf, options) { this.activeCalls.push({ leaf, options }); },
     },
@@ -216,7 +247,7 @@ function createHarness() {
     },
     async saveSettings() {},
   };
-  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian,
+  return { ...load('main'), SearchOpenModal: load('nativeModal').SearchOpenModal, clock, app, plugin, obsidian, realLeafView: () => load('leafView', true),
     makeLeaf, leafModule, spawned, TFile, ElementStub };
 }
 
