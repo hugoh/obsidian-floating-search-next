@@ -61,10 +61,9 @@ function patchedWorkspace(h) {
     pushUndoHistory: () => 'recorded',
   };
   Object.assign(Workspace.prototype, originals);
-  const uninstallers = [];
-  h.default.prototype.patchWorkspace.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspace.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf?.embedded);
-  return { Workspace, originals, uninstall: () => uninstallers.forEach((fn) => fn()) };
+  return { Workspace, originals, uninstall };
 }
 
 test('getLeaf keeps a link opened inside the embedded preview in that preview', () => {
@@ -108,8 +107,7 @@ test('an embedded leaf stays pinned, a normal one does not', () => {
   const h = createHarness();
   const { WorkspaceLeaf } = h.obsidian;
   WorkspaceLeaf.prototype.setPinned = function (pinned) { this.pinned = pinned; };
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspaceLeaf.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
   const leafOf = (embedded) => Object.assign(Object.create(WorkspaceLeaf.prototype), { embedded });
   const embedded = leafOf(true);
@@ -118,17 +116,7 @@ test('an embedded leaf stays pinned, a normal one does not', () => {
   const normal = leafOf(false);
   normal.setPinned(false);
   assert.equal(normal.pinned, false);
-  uninstallers.forEach((fn) => fn());
-});
-
-test('a failed patch run is retried on the next open instead of being marked done', () => {
-  const h = createHarness();
-  let attempts = 0;
-  const plugin = new h.default(h.app, {});
-  plugin.patchWorkspace = () => { attempts++; throw new Error('boom'); };
-  assert.throws(() => plugin.ensurePatched(), /boom/);
-  assert.throws(() => plugin.ensurePatched(), /boom/);
-  assert.equal(attempts, 2);
+  uninstall();
 });
 
 test('the tracker patch skips a file that was only shown by an embedded leaf', () => {
@@ -137,8 +125,7 @@ test('the tracker patch skips a file that was only shown by an embedded leaf', (
   const tracker = { onFileOpen(_next, previous) { if (previous) collected.push(previous); } };
   const original = tracker.onFileOpen;
   h.app.workspace.recentFileTracker = tracker;
-  const uninstallers = [];
-  h.default.prototype.patchRecentFileTracker.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchRecentFileTracker.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
   const activate = (embedded) => { h.app.workspace.activeView = { leaf: { embedded } }; };
   const note = { path: 'note.md' };
@@ -155,7 +142,7 @@ test('the tracker patch skips a file that was only shown by an embedded leaf', (
   tracker.onFileOpen(note, opened);
   assert.deepEqual(collected, [note, opened], 'a file opened for real is recorded when replaced');
 
-  uninstallers.forEach((fn) => fn());
+  uninstall();
   assert.equal(tracker.onFileOpen, original, 'unloading restores the tracker');
 });
 
@@ -183,8 +170,7 @@ test('the leaf patch leaves openFile alone', () => {
   const { WorkspaceLeaf } = h.obsidian;
   const original = function () { return Promise.resolve(); };
   WorkspaceLeaf.prototype.openFile = original;
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspaceLeaf.call({ app: h.app });
   assert.equal(WorkspaceLeaf.prototype.openFile, original);
-  uninstallers.forEach((fn) => fn());
+  uninstall();
 });

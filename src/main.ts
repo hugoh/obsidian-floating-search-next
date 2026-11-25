@@ -24,13 +24,12 @@ interface ActivatableWorkspace {
   setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
 }
 
-/** Runs `fn` until it has completed once; a run that throws is retried. */
-function once(fn: () => void) {
-  let done = false;
+type Uninstall = () => void;
+
+/** One function that runs all of `uninstalls`, last first. */
+function combine(uninstalls: Uninstall[]): Uninstall {
   return () => {
-    if (done) return;
-    fn();
-    done = true;
+    for (const uninstall of [...uninstalls].reverse()) uninstall();
   };
 }
 
@@ -73,13 +72,28 @@ export default class SearchOpenPlugin extends Plugin {
     this.forgetQuery.cancel();
   }
 
-  // The monkeypatches are only needed once a search is opened, so they are
-  // applied on first use rather than at startup.
-  private readonly ensurePatched = once(() => {
-    this.patchWorkspace();
-    this.patchWorkspaceLeaf();
-    this.patchRecentFileTracker();
-  });
+  /**
+   * The patches only matter while embedded leaves exist, so they are applied
+   * when a search opens and removed when it closes. If one fails to install,
+   * the ones already applied are undone before the error is rethrown.
+   */
+  private installPatches(modal: SearchOpenModal): Uninstall {
+    const installed: Uninstall[] = [];
+    try {
+      for (const install of [
+        () => this.patchWorkspace(),
+        () => this.patchWorkspaceLeaf(),
+        () => this.patchRecentFileTracker(),
+        () => this.holdBackRecentFiles(modal),
+      ]) {
+        installed.push(install());
+      }
+    } catch (error) {
+      combine(installed)();
+      throw error;
+    }
+    return combine(installed);
+  }
 
   /** The sanitized settings never hold a query, so a search opens global. */
   private initState() {
@@ -87,13 +101,12 @@ export default class SearchOpenPlugin extends Plugin {
   }
 
   private initModal(state: SearchState, caret?: Caret) {
-    this.ensurePatched();
     this.modal?.close();
 
     const modal: SearchOpenModal = new SearchOpenModal(
       (closing) => {
         if (this.modal === modal) this.modal = undefined;
-        releaseRecentFiles();
+        releasePatches();
         // Closed before the view took its state: there is nothing to remember.
         if (!closing) return;
         this.state = { ...this.state, ...closing.state };
@@ -106,12 +119,12 @@ export default class SearchOpenPlugin extends Plugin {
       state,
       caret,
     );
-    const releaseRecentFiles = this.holdBackRecentFiles(modal);
+    const releasePatches = this.installPatches(modal);
     this.modal = modal;
     modal.open();
   }
 
-  patchWorkspace() {
+  patchWorkspace(): Uninstall {
     // Keep the plugin receiver across native method wrappers.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
     const self = this;
@@ -141,9 +154,9 @@ export default class SearchOpenPlugin extends Plugin {
         };
       },
     });
-    this.register(uninstaller);
-    this.register(
-      around(Workspace.prototype as unknown as ActivatableWorkspace, {
+    const uninstallActiveLeaf = around(
+      Workspace.prototype as unknown as ActivatableWorkspace,
+      {
         setActiveLeaf(old) {
           return function (
             this: Workspace,
@@ -157,28 +170,27 @@ export default class SearchOpenPlugin extends Plugin {
             return old.call(this, leaf, params);
           };
         },
-      }),
+      },
     );
+    return combine([uninstaller, uninstallActiveLeaf]);
   }
 
   // Used for patch workspaceleaf pinned behaviors
-  patchWorkspaceLeaf() {
-    this.register(
-      around(WorkspaceLeaf.prototype, {
-        getRoot(old) {
-          return function (this: WorkspaceLeaf) {
-            const top = old.call(this);
-            return top?.getRoot === this.getRoot ? top : top?.getRoot();
-          };
-        },
-        setPinned(old) {
-          return function (this: WorkspaceLeaf, pinned: boolean) {
-            old.call(this, pinned);
-            if (isEmbeddedLeaf(this) && !pinned) this.setPinned(true);
-          };
-        },
-      }),
-    );
+  patchWorkspaceLeaf(): Uninstall {
+    return around(WorkspaceLeaf.prototype, {
+      getRoot(old) {
+        return function (this: WorkspaceLeaf) {
+          const top = old.call(this);
+          return top?.getRoot === this.getRoot ? top : top?.getRoot();
+        };
+      },
+      setPinned(old) {
+        return function (this: WorkspaceLeaf, pinned: boolean) {
+          old.call(this, pinned);
+          if (isEmbeddedLeaf(this) && !pinned) this.setPinned(true);
+        };
+      },
+    });
   }
 
   /**
@@ -186,26 +198,24 @@ export default class SearchOpenPlugin extends Plugin {
    * the preview leaf becomes the active leaf while it is shown. Leave out a file
    * that was only ever shown by an embedded leaf.
    */
-  patchRecentFileTracker() {
+  patchRecentFileTracker(): Uninstall {
     const { workspace } = this.app;
     const tracker = workspace.recentFileTracker;
-    if (!tracker) return;
+    if (!tracker) return () => {};
     let previewed: TFile | null = null;
-    this.register(
-      around(tracker, {
-        onFileOpen: (old) =>
-          function (
-            this: unknown,
-            newFile: TFile | null,
-            oldFile: TFile | null,
-          ) {
-            const skip = oldFile !== null && oldFile === previewed;
-            const active = workspace.getActiveViewOfType(View)?.leaf;
-            previewed = active && isEmbeddedLeaf(active) ? newFile : null;
-            return skip ? undefined : old.call(this, newFile, oldFile);
-          },
-      }),
-    );
+    return around(tracker, {
+      onFileOpen: (old) =>
+        function (
+          this: unknown,
+          newFile: TFile | null,
+          oldFile: TFile | null,
+        ) {
+          const skip = oldFile !== null && oldFile === previewed;
+          const active = workspace.getActiveViewOfType(View)?.leaf;
+          previewed = active && isEmbeddedLeaf(active) ? newFile : null;
+          return skip ? undefined : old.call(this, newFile, oldFile);
+        },
+    });
   }
 
   /**
@@ -213,7 +223,9 @@ export default class SearchOpenPlugin extends Plugin {
    * `shouldAddFile` agrees. Keep previewed files out of its list while the modal
    * is open; the returned function ends that.
    */
-  holdBackRecentFiles(modal: { hasPreviewed(file: TFile): boolean }) {
+  holdBackRecentFiles(modal: {
+    hasPreviewed(file: TFile): boolean;
+  }): Uninstall {
     const recentFiles = this.app.plugins.plugins["recent-files-obsidian"];
     if (!recentFiles) return () => {};
     return around(recentFiles, {

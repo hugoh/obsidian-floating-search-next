@@ -95,14 +95,13 @@ test('the undo-history patch only skips embedded search leaves', () => {
   const h = createHarness();
   const { Workspace } = h.obsidian;
   Workspace.prototype.pushUndoHistory = () => 'recorded';
-  const uninstallers = [];
-  h.default.prototype.patchWorkspace.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspace.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
   const leafOf = (embedded) => ({ embedded, getViewState: () => ({ type: 'search' }) });
   const workspace = new Workspace();
   assert.equal(workspace.pushUndoHistory(leafOf(false), 'id'), 'recorded', 'a normal search view keeps its history');
   assert.equal(workspace.pushUndoHistory(leafOf(true), 'id'), undefined, 'the embedded one is skipped');
-  uninstallers.forEach((uninstall) => uninstall());
+  uninstall();
 });
 
 test('unloading closes the modal first, then saves and drops the pending timer', () => {
@@ -282,4 +281,72 @@ test('a drag that outlives its modal does not close the next one', async () => {
   const second = await openedModal(h);
   await h.clock.tick(20);
   assert.equal(second.isOpen, true);
+});
+
+function pluginIn(h) {
+  const plugin = new h.default(h.app, {});
+  Object.assign(plugin, {
+    app: h.app,
+    settings: { showInstructions: false, searchViewState: {} },
+    state: { query: '' },
+  });
+  h.app.plugins = { plugins: {} };
+  h.leafModule.nextLeaf = h.makeLeaf();
+  return plugin;
+}
+
+function patchableMethods(h) {
+  const { Workspace, WorkspaceLeaf } = h.obsidian;
+  const originals = {
+    getLeaf: function () {}, pushUndoHistory: function () {},
+    setPinned: function () {}, getRoot: function () {},
+  };
+  Object.assign(Workspace.prototype, { getLeaf: originals.getLeaf, pushUndoHistory: originals.pushUndoHistory });
+  Object.assign(WorkspaceLeaf.prototype, { setPinned: originals.setPinned, getRoot: originals.getRoot });
+  const untouched = () =>
+    Workspace.prototype.getLeaf === originals.getLeaf &&
+    Workspace.prototype.pushUndoHistory === originals.pushUndoHistory &&
+    WorkspaceLeaf.prototype.setPinned === originals.setPinned &&
+    WorkspaceLeaf.prototype.getRoot === originals.getRoot &&
+    !Object.hasOwn(Workspace.prototype, 'setActiveLeaf');
+  return { untouched };
+}
+
+test('Obsidian is patched only while a search is open', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  assert.equal(untouched(), true, 'nothing is patched before a search opens');
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  assert.equal(untouched(), false, 'patched while the modal is open');
+  plugin.modal.close();
+  assert.equal(untouched(), true, 'and put back as soon as it closes');
+});
+
+test('reopening a search swaps the patches instead of stacking them', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  plugin.initModal({ query: '' });
+  h.leafModule.nextLeaf = h.makeLeaf();
+  plugin.initModal({ query: 'again' });
+  await h.clock.tick(0);
+  plugin.modal.close();
+  assert.equal(untouched(), true);
+});
+
+test('a patch that fails to install leaves nothing patched, and the next search tries again', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  const real = plugin.patchRecentFileTracker;
+  plugin.patchRecentFileTracker = () => { throw new Error('boom'); };
+  assert.throws(() => plugin.initModal({ query: '' }), /boom/);
+  assert.equal(untouched(), true, 'what was already patched is undone');
+  plugin.patchRecentFileTracker = real;
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  assert.equal(untouched(), false);
+  plugin.modal.close();
 });

@@ -65,7 +65,7 @@ that Obsidian no longer has.
 | zh-CN / en localization (typed `strings()`) | AiurArtanis | Removed (English only; messages stay in `src/i18n.ts`) |
 | Preview and file-opening lifecycle fixes, regression test harness | AiurArtanis | Kept (a handful of its 23 tests remain, adapted) |
 | Crash guard for highlights in embedded previews | Peingxious | Removed (the preview is read-only reading mode, with no editor) |
-| Patches applied on first use, not at startup | Peingxious | Kept |
+| Patches applied on first use, not at startup | Peingxious | Reworked: applied when a search opens, removed when it closes |
 | Matched text kept marked in the reading-mode preview (CSS Custom Highlight API, `src/matchHighlight.ts`) | Written here | Kept |
 | CMDK quick search, quick create | Upstream, reworked by both forks | Removed |
 | Filter bar (Bases, Canvas, starred, match case, regex) | AiurArtanis | Removed |
@@ -142,6 +142,13 @@ Fixes made after the plugin was narrowed:
   computed to a transparent background and only Obsidian's own flash was visible. It
   now uses `--highlight-background` with a yellow fallback, and an e2e spec checks the
   highlight is actually painted.
+- Obsidian was patched for the rest of the session after the first search, and two
+  patches only served one call site each. The canvas card is now selected by the modal
+  right after it awaits the preview's `openFile` (no `WorkspaceLeaf.openFile` patch),
+  and the modal closes on a `dragstart` from a result row (no `DragManager` patch).
+  The remaining patches are installed when a search opens and removed when it closes,
+  and a patch that fails to install undoes the ones already applied (node tests, e2e
+  against the real Obsidian).
 
 ## Tooling decisions
 

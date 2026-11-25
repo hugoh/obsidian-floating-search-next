@@ -638,6 +638,32 @@ describe("Search & Open modal", () => {
     ).toBe(true);
   });
 
+  it("puts Obsidian's own workspace methods back as soon as the modal closes", async () => {
+    await waitForPlugin();
+    const { before, open, closed } = await browser.executeObsidian(
+      ({ app }, id) => {
+        const proto = Object.getPrototypeOf(app.workspace) as Record<
+          string,
+          unknown
+        >;
+        const methods = ["getLeaf", "pushUndoHistory"];
+        const native = methods.map((name) => proto[name]);
+        const sameAsNative = () =>
+          methods.every((name, index) => proto[name] === native[index]);
+        const before = sameAsNative();
+        const plugin = app.plugins.plugins[id];
+        plugin.initModal({ ...plugin.state, query: "" });
+        const open = sameAsNative();
+        plugin.modal.close();
+        return { before, open, closed: sameAsNative() };
+      },
+      PLUGIN_ID,
+    );
+    expect(before).toBe(true);
+    expect(open).toBe(false);
+    expect(closed).toBe(true);
+  });
+
   it("puts Obsidian's own workspace methods back when the plugin is disabled", async () => {
     await waitForPlugin();
     const { patched, restored } = await browser.executeObsidian(
