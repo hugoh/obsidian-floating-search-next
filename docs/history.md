@@ -1,4 +1,4 @@
-# Consolidation notes
+# History
 
 This plugin began as a consolidation of the forks of
 [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search)
