@@ -29,27 +29,41 @@ renamed identifiers push the share up; treat the numbers as a rough guide, not a
 Since then `leafView.ts` was cut from 627 to about 90 lines, the typings from 299 to
 about 70, and the harness was trimmed, so the upstream share has dropped further.
 
-Measured again later, against upstream 4.4.1 only (the two other forks were not
-included, so it is a lower bound on inherited code): about 870 non-trivial lines in
-`src/*.ts` (tests excluded) and `styles.css`, of which 228 (26%) appear verbatim in
-upstream. Upstream itself is about 3,800 lines of `.ts` and `.css`, so roughly a tenth
-of it survives.
+Measured again after the narrowing and the clean-up of the inherited patches, key
+handling and CSS, the same way but against all four sources at once (upstream 4.3.0
+and 4.4.1 together, then AiurArtanis, then Peingxious, each line counted once): about
+870 non-trivial lines in `src/*.ts` (tests excluded, typings included) and
+`styles.css`, down from about 1,380.
 
-| File | Lines found in upstream |
-|---|---|
-| `nativeModal.ts` | 20% (70 of 357) |
-| `main.ts` | 38% (78 of 204) |
-| `leafView.ts` | 33% (18 of 55) |
-| `settings.ts`, `settingsTab.ts` | 29% |
-| `styles.css` | 51% (35 of 68) |
-| `i18n.ts`, `latestQueue.ts`, `matchHighlight.ts` | about 0% (new here) |
+| Origin | Lines | Share |
+|---|---|---|
+| Upstream (Quorafind, 4.3.0 and 4.4.1) | 272 | 31% |
+| AiurArtanis | 51 | 6% |
+| Peingxious | 2 | under 1% |
+| Written or reworked here | 544 | 63% |
 
-The same caveat applies: reformatting and renamed identifiers count as new code, so
-the true share is somewhat higher. What is left of upstream is the architecture (one
-modal wrapping Obsidian's search view, an embedded preview leaf, the `obsidian://fs`
-handler, the key handling) more than the text. This is a derivative with its own
-scope, tests and release pipeline rather than a fork that tracks upstream, and it
-cannot be merged back as a pull request.
+| File | Lines | From upstream | From the other forks | New |
+|---|---|---|---|---|
+| `nativeModal.ts` | 363 | 113 | 24 | 226 |
+| `main.ts` | 143 | 49 | 3 | 91 |
+| `styles.css` | 63 | 32 | 9 | 22 |
+| `settings.ts`, `settingsTab.ts` | 90 | 28 | 2 | 60 |
+| `leafView.ts` | 55 | 18 | 0 | 37 |
+| `types-obsidian.d.ts` | 39 | 25 | 0 | 14 |
+| `canvasSelection.ts`, `latestQueue.ts`, `matchHighlight.ts` | 98 | 7 | 6 | 85 |
+| `i18n.ts` | 18 | 0 | 9 | 9 |
+
+The test harness (`tests/harness.cjs`) is now 72% AiurArtanis's by the same count,
+down from about 95%.
+
+The same caveat applies, in both directions: reformatting and renamed identifiers
+count as new code (understating what is inherited), and short generic lines can match
+by coincidence (overstating it). Treat the numbers as a rough guide.
+What is left is mostly the architecture (one modal wrapping Obsidian's search view, an
+embedded preview leaf, the `obsidian://fs` handler, the key bindings' intent) more
+than the text. This is a derivative with its own scope, tests and release pipeline
+rather than a fork that tracks upstream, and it cannot be merged back as a pull
+request.
 
 Hover Editor's code reaches this repository through Floating Search: `leafView.ts`
 and the `getRoot` patch in `main.ts` are its code (the patch verified against its

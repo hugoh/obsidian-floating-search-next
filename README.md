@@ -8,7 +8,7 @@ Search your vault with Obsidian's own search in a floating modal, then open the 
 
 ## About this plugin
 
-Search & Open started as a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall (Quorafind) and is now best described as a derivative. It is a much smaller plugin with a narrower purpose, and it is not a drop-in replacement for Floating Search, nor meant to compete with it. About a quarter of the current source lines (26% by a rough count against Floating Search 4.4.1) are still verbatim from it, and the rest was removed, rewritten or added here.
+Search & Open started as a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall (Quorafind) and is now best described as a derivative. It is a much smaller plugin with a narrower purpose, and it is not a drop-in replacement for Floating Search, nor meant to compete with it. About a third of the current source lines (31% by a rough count against Floating Search 4.3.0 and 4.4.1) are still verbatim from it, and the rest was removed, rewritten or added here.
 
 What carries over is the idea and the architecture: the floating modal wrapping Obsidian's own search view, the embedded preview, most of the keyboard handling and the `obsidian://fs` link. Credit for those goes to the original author. The CI pipeline, the end-to-end tests and the match highlighting in the preview are new here, and so are the settings and the plugin's lifecycle handling.
 
