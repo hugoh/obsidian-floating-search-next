@@ -17,10 +17,10 @@ Project lineage (all GPL-3.0, verified against each repository's LICENSE)
   https://github.com/Quorafind/Obsidian-Float-Search
 - Float Search Window, by AiurArtanis (continues upstream 4.3.0)
   https://github.com/AiurArtanis/Obsidian-Float-Search-Window
-  Contributed: the composition (IME) guard, the typed localization and its
-  zh-CN translation, preview and file-opening lifecycle fixes, and the
-  regression test harness. (Its filter bar, quick search and tabbed settings
-  were later removed.)
+  Contributed: the composition (IME) guard, the typed message table, preview
+  and file-opening lifecycle fixes, and the regression test harness. (Its
+  Chinese translation, filter bar, quick search and tabbed settings were later
+  removed.)
 - Obsidian Float Search, fork by Peingxious
   https://github.com/Peingxious/Obsidian-Float-Search
   Contributed: the crash guard for highlights in embedded previews (later
