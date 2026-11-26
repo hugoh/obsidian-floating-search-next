@@ -48,8 +48,6 @@ BRAT also keeps the plugin up to date.
         - Press Ctrl+Enter (Cmd+Enter on macOS) to open the file in a new tab and keep the popup open;
         - Press Ctrl+Shift+Alt+Enter to open the file in a new window and close the popup;
     - Press Tab to preview the selected result straight away, and Shift+Tab to close the preview;
-    - Press Ctrl+Shift+C to copy the selected result;
-    - While a file is previewed, press Ctrl+E to toggle its reading mode;
     - While a file is previewed, press Ctrl+G to jump from the search box into the preview, or from the preview back to the search box;
     - On a match line, press Tab again to jump into its preview, and Ctrl+Tab to come back to the search box.
 3. **Mouse**:
