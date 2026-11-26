@@ -700,14 +700,15 @@ describe("Search & Open modal", () => {
 
     it("keep a link clicked in the preview from opening in the workspace", async () => {
       await waitForPlugin();
-      const files = () =>
+      const tabs = () =>
         browser.executeObsidian(({ app }) => {
-          const paths: string[] = [];
+          const found: string[] = [];
           app.workspace.iterateAllLeaves((leaf) => {
-            const path = (leaf.view as { file?: { path: string } }).file?.path;
-            if (path === "Other.md") paths.push(path);
+            const { type, state } = leaf.getViewState();
+            const { id } = leaf as unknown as { id: string };
+            found.push(`${id} ${type} ${JSON.stringify(state?.file)}`);
           });
-          return paths.length;
+          return found;
         });
       await browser.executeObsidian(async ({ app }) => {
         await app.vault.create("Linker.md", "go to [[Other]] linkprobexyz");
@@ -718,10 +719,10 @@ describe("Search & Open modal", () => {
         await browser.keys(["ArrowDown", "Tab"]);
         const link = ".search-open-modal-file-ctn a.internal-link";
         await browser.$(link).waitForExist();
-        const before = await files();
+        const before = await tabs();
         await browser.$(link).click();
         await browser.pause(1000);
-        expect(await files()).toBe(before);
+        expect(await tabs()).toEqual(before);
       } finally {
         await browser.executeObsidian(async ({ app }) => {
           const note = app.vault.getFileByPath("Linker.md");
