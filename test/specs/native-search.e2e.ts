@@ -698,38 +698,62 @@ describe("Search & Open modal", () => {
       expect(embedded).toBe(false);
     });
 
-    it("keep a link clicked in the preview from opening in the workspace", async () => {
-      await waitForPlugin();
-      const tabs = () =>
-        browser.executeObsidian(({ app }) => {
-          const found: string[] = [];
-          app.workspace.iterateAllLeaves((leaf) => {
-            const { type, state } = leaf.getViewState();
-            const { id } = leaf as unknown as { id: string };
-            found.push(`${id} ${type} ${JSON.stringify(state?.file)}`);
-          });
-          return found;
+    const mainTabs = () =>
+      browser.executeObsidian(({ app }) => {
+        const found: string[] = [];
+        app.workspace.iterateRootLeaves((leaf) => {
+          const { type, state } = leaf.getViewState();
+          const { id } = leaf as unknown as { id: string };
+          found.push(`${id} ${type} ${JSON.stringify(state?.file)}`);
         });
-      await browser.executeObsidian(async ({ app }) => {
-        await app.vault.create("Linker.md", "go to [[Other]] linkprobexyz");
+        return found;
       });
-      try {
-        await searchFor("linkprobexyz");
-        await waitForResults();
-        await browser.keys(["ArrowDown", "Tab"]);
-        const link = ".search-open-modal-file-ctn a.internal-link";
-        await browser.$(link).waitForExist();
-        const before = await tabs();
-        await browser.$(link).click();
-        await browser.pause(1000);
-        expect(await tabs()).toEqual(before);
-      } finally {
+
+    for (const [how, ctrlKey] of [
+      ["clicked", false],
+      ["Ctrl+clicked", true],
+    ] as const) {
+      it(`open a link ${how} in the preview there, not in the workspace`, async () => {
+        await waitForPlugin();
         await browser.executeObsidian(async ({ app }) => {
-          const note = app.vault.getFileByPath("Linker.md");
-          if (note) await app.vault.delete(note);
+          await app.vault.create("Linker.md", "go to [[Other]] linkprobexyz");
         });
-      }
-    });
+        try {
+          await searchFor("linkprobexyz");
+          await waitForResults();
+          await browser.keys(["ArrowDown", "Tab"]);
+          const link = ".search-open-modal-file-ctn a.internal-link";
+          await browser.$(link).waitForExist();
+          const before = await mainTabs();
+          await browser.execute(
+            (selector, ctrl) => {
+              document.querySelector(selector)?.dispatchEvent(
+                new MouseEvent("click", {
+                  bubbles: true,
+                  cancelable: true,
+                  ctrlKey: ctrl,
+                }),
+              );
+            },
+            link,
+            ctrlKey,
+          );
+          await browser.waitUntil(
+            async () =>
+              (
+                await browser.$(".search-open-modal-file-ctn").getText()
+              ).includes("Nothing relevant here"),
+            { timeoutMsg: "the preview never showed the linked note" },
+          );
+          expect(await mainTabs()).toEqual(before);
+        } finally {
+          await browser.executeObsidian(async ({ app }) => {
+            const note = app.vault.getFileByPath("Linker.md");
+            if (note) await app.vault.delete(note);
+          });
+        }
+      });
+    }
   });
 
   it("puts Obsidian's own workspace methods back as soon as the modal closes", async () => {

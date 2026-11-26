@@ -73,6 +73,19 @@ test('the preview always opens in reading mode, first open and reuse alike', asy
   for (const { options } of opened) assert.equal(options.state.mode, 'preview');
 });
 
+test('previewing an item cancels the preview an arrow key had scheduled', async () => {
+  const h = createHarness();
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  const item = { file: new h.TFile('result.md') };
+  modal.searchLeaf.view.dom = { focusedItem: item };
+  modal.debouncedAutoPreview();
+  modal.previewItem(item);
+  await h.clock.microtasks();
+  await h.clock.tick(200);
+  assert.equal(h.spawned[0].leaf.opened.length, 1, 'a later reopen would replace a link followed in the preview');
+});
+
 test('native initialization cannot change selection after closing during delayed setState', async () => {
   const h = createHarness();
   const pending = deferred();
