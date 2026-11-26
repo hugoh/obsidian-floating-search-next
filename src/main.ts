@@ -4,7 +4,7 @@ import {
   debounce,
   type ObsidianProtocolData,
   Plugin,
-  TFile,
+  type TFile,
   View,
   Workspace,
   WorkspaceLeaf,
@@ -173,11 +173,7 @@ export default class SearchOpenPlugin extends Plugin {
     let previewed: TFile | null = null;
     return around(tracker, {
       onFileOpen: (old) =>
-        function (
-          this: unknown,
-          newFile: TFile | null,
-          oldFile: TFile | null,
-        ) {
+        function (this: unknown, newFile: TFile | null, oldFile: TFile | null) {
           const skip = oldFile !== null && oldFile === previewed;
           const active = workspace.getActiveViewOfType(View)?.leaf;
           previewed = active && isEmbeddedLeaf(active) ? newFile : null;
