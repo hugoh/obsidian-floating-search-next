@@ -15,20 +15,19 @@ export class SearchOpenSettingTab extends PluginSettingTab {
   }
 
   override getSettingDefinitions(): SettingDefinitionItem[] {
-    const s = strings();
     return [
       {
         type: "group",
-        heading: s.tabGeneral,
+        heading: strings.tabGeneral,
         items: [
           {
             name: this.plugin.manifest.name,
-            desc: s.pluginIntro,
+            desc: strings.pluginIntro,
             searchable: false,
             render: () => {},
           },
           {
-            name: s.showInstructions,
+            name: strings.showInstructions,
             control: { type: "toggle", key: "showInstructions" },
           },
         ],

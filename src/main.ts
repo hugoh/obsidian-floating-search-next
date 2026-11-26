@@ -1,13 +1,10 @@
 import { around } from "monkey-around";
 import {
   addIcon,
-  type DragManager,
   debounce,
-  Editor,
   type ObsidianProtocolData,
-  type OpenViewState,
   Plugin,
-  TFile,
+  type TFile,
   View,
   Workspace,
   WorkspaceLeaf,
@@ -16,51 +13,19 @@ import { strings } from "./i18n";
 import { isEmbeddedLeaf } from "./leafView";
 import { type Caret, SearchOpenModal } from "./nativeModal";
 import {
-  DEFAULT_SETTINGS,
   type SearchOpenSettings,
   type SearchState,
   sanitizeSettings,
 } from "./settings";
 import { SearchOpenSettingTab } from "./settingsTab";
 
-interface CanvasNode {
-  id: string;
-  text?: string;
-}
+type Uninstall = () => void;
 
-/** The slice of a Canvas view used to select the matched card in a preview. */
-interface CanvasLeafView {
-  canvas?: {
-    data: { nodes?: CanvasNode[] };
-    nodes: Map<string, CanvasNode>;
-    selectOnly(node: CanvasNode): void;
-    zoomToSelection(): void;
+/** One function that runs all of `uninstalls`, last first. */
+function combine(uninstalls: Uninstall[]): Uninstall {
+  return () => {
+    for (const uninstall of [...uninstalls].reverse()) uninstall();
   };
-}
-
-/** The current (leaf, params) form of Workspace.setActiveLeaf. */
-interface ActivatableWorkspace {
-  setActiveLeaf(leaf: WorkspaceLeaf, params?: { focus?: boolean }): void;
-}
-
-/** Selects and zooms to the canvas card whose text a search result matched. */
-function selectMatchedCard(
-  leaf: WorkspaceLeaf,
-  file: TFile,
-  openState?: OpenViewState,
-) {
-  const view = leaf.view as CanvasLeafView & { file?: TFile };
-  if (view.file !== file || !view.canvas) return;
-  const wanted = (
-    openState?.eState as { match?: { content?: string } } | undefined
-  )?.match?.content;
-  if (wanted === undefined) return;
-  const { canvas } = view;
-  const found = canvas.data.nodes?.find((node) => node.text === wanted);
-  const card = found && canvas.nodes.get(found.id);
-  if (!card) return;
-  canvas.selectOnly(card);
-  canvas.zoomToSelection();
 }
 
 export default class SearchOpenPlugin extends Plugin {
@@ -68,7 +33,7 @@ export default class SearchOpenPlugin extends Plugin {
   private state: SearchState;
   private modal: SearchOpenModal | undefined;
 
-  public applySettingsUpdate = debounce(async () => {
+  private applySettingsUpdate = debounce(async () => {
     await this.saveSettings();
   }, 1000);
 
@@ -88,7 +53,7 @@ export default class SearchOpenPlugin extends Plugin {
     this.registerObsidianURIHandler();
     this.registerObsidianCommands();
 
-    this.addRibbonIcon("search-open-window", strings().ribbonSearch, () =>
+    this.addRibbonIcon("search-open-window", strings.ribbonSearch, () =>
       this.initModal({ ...this.state, query: "" }),
     );
     this.addSettingTab(new SearchOpenSettingTab(this.app, this));
@@ -102,76 +67,44 @@ export default class SearchOpenPlugin extends Plugin {
     this.forgetQuery.cancel();
   }
 
-  // The monkeypatches are only needed once a search is opened, so they are
-  // applied on first use rather than at startup.
-  private patched = false;
-  private ensurePatched() {
-    if (this.patched) return;
-    this.patchWorkspace();
-    this.patchWorkspaceLeaf();
-    this.patchRecentFileTracker();
-    this.patchDragManager();
-    this.patchEditorHighlights();
-    this.patched = true;
+  /**
+   * The patches only matter while embedded leaves exist, so they are applied
+   * when a search opens and removed when it closes. If one fails to install,
+   * the ones already applied are undone before the error is rethrown.
+   */
+  private installPatches(modal: SearchOpenModal): Uninstall {
+    const installed: Uninstall[] = [];
+    try {
+      for (const install of [
+        () => this.patchWorkspace(),
+        () => this.patchWorkspaceLeaf(),
+        () => this.patchRecentFileTracker(),
+        () => this.holdBackRecentFiles(modal),
+      ]) {
+        installed.push(install());
+      }
+    } catch (error) {
+      combine(installed)();
+      throw error;
+    }
+    return combine(installed);
   }
 
-  // Obsidian's search addon calls removeHighlights()/hasHighlight() on every
-  // markdown editor whenever a search runs. Editors created inside the
-  // embedded (HoverPopover) preview leaf may not have the search-highlight
-  // StateField registered in their CodeMirror state, so `state.field(...)`
-  // throws "Field is not present in this state" and crashes the app. Wrap
-  // both methods defensively so the embedded preview can never crash Obsidian
-  // — when the field is absent there are simply no highlights to manage.
-  private patchEditorHighlights() {
-    const swallowMissingField =
-      <R>(fallback: R) =>
-      (original: (...args: unknown[]) => R) =>
-        function (this: unknown, ...args: unknown[]): R {
-          try {
-            return original.apply(this, args);
-          } catch (e) {
-            if (
-              e instanceof RangeError &&
-              /Field is not present in this state/.test(e.message)
-            ) {
-              return fallback;
-            }
-            throw e;
-          }
-        };
-    const proto = Editor.prototype;
-    this.register(
-      around(proto, {
-        ...(proto.removeHighlights && {
-          removeHighlights: swallowMissingField<void>(undefined),
-        }),
-        ...(proto.hasHighlight && {
-          hasHighlight: swallowMissingField(false),
-        }),
-      }),
-    );
+  /** The sanitized settings never hold a query, so a search opens global. */
+  private initState() {
+    this.state = { ...this.settings.searchViewState };
   }
 
-  initState() {
-    // The persisted query is never restored, so a search always opens global.
-    this.state = {
-      ...DEFAULT_SETTINGS.searchViewState,
-      ...this.settings.searchViewState,
-      query: "",
-    };
-  }
-
-  initModal(state: SearchState, caret?: Caret) {
-    this.ensurePatched();
+  private initModal(state: SearchState, caret?: Caret) {
     this.modal?.close();
 
     const modal: SearchOpenModal = new SearchOpenModal(
       (closing) => {
         if (this.modal === modal) this.modal = undefined;
-        releaseRecentFiles();
+        releasePatches();
         // Closed before the view took its state: there is nothing to remember.
         if (!closing) return;
-        this.state = { ...DEFAULT_SETTINGS.searchViewState, ...closing.state };
+        this.state = { ...this.state, ...closing.state };
         this.lastCaret = closing.caret;
         this.settings.searchViewState = { ...this.state, query: "" };
         this.applySettingsUpdate();
@@ -181,16 +114,16 @@ export default class SearchOpenPlugin extends Plugin {
       state,
       caret,
     );
-    const releaseRecentFiles = this.holdBackRecentFiles(modal);
+    const releasePatches = this.installPatches(modal);
     this.modal = modal;
     modal.open();
   }
 
-  patchWorkspace() {
+  patchWorkspace(): Uninstall {
     // Keep the plugin receiver across native method wrappers.
     // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
     const self = this;
-    const uninstaller = around(Workspace.prototype, {
+    return around(Workspace.prototype, {
       getLeaf: (next) =>
         function (this: Workspace, ...args: Parameters<Workspace["getLeaf"]>) {
           const activeLeaf = self.app.workspace.getActiveViewOfType(View)?.leaf;
@@ -209,64 +142,23 @@ export default class SearchOpenPlugin extends Plugin {
         },
       pushUndoHistory(old) {
         return function (leaf: WorkspaceLeaf, id: string, ...args: unknown[]) {
-          if (isEmbeddedLeaf(leaf) && leaf.getViewState().type === "search") {
-            return;
-          }
+          if (isEmbeddedLeaf(leaf)) return;
           return old.call(this, leaf, id, ...args);
         };
       },
     });
-    this.register(uninstaller);
-    this.register(
-      around(Workspace.prototype as unknown as ActivatableWorkspace, {
-        setActiveLeaf(old) {
-          return function (
-            this: Workspace,
-            leaf: WorkspaceLeaf,
-            params?: { focus?: boolean },
-          ) {
-            if (isEmbeddedLeaf(leaf)) {
-              old.call(this, leaf, params);
-              leaf.activeTime = 1700000000000;
-            }
-            return old.call(this, leaf, params);
-          };
-        },
-      }),
-    );
   }
 
   // Used for patch workspaceleaf pinned behaviors
-  patchWorkspaceLeaf() {
-    this.register(
-      around(WorkspaceLeaf.prototype, {
-        getRoot(old) {
-          return function (this: WorkspaceLeaf) {
-            const top = old.call(this);
-            return top?.getRoot === this.getRoot ? top : top?.getRoot();
-          };
-        },
-        setPinned(old) {
-          return function (this: WorkspaceLeaf, pinned: boolean) {
-            old.call(this, pinned);
-            if (isEmbeddedLeaf(this) && !pinned) this.setPinned(true);
-          };
-        },
-        openFile(old) {
-          return function (
-            this: WorkspaceLeaf,
-            file: TFile,
-            openState?: OpenViewState,
-          ) {
-            const opened = old.call(this, file, openState);
-            if (!isEmbeddedLeaf(this) || file.extension !== "canvas") {
-              return opened;
-            }
-            return opened.then(() => selectMatchedCard(this, file, openState));
-          };
-        },
-      }),
-    );
+  patchWorkspaceLeaf(): Uninstall {
+    return around(WorkspaceLeaf.prototype, {
+      getRoot(old) {
+        return function (this: WorkspaceLeaf) {
+          const top = old.call(this);
+          return top?.getRoot === this.getRoot ? top : top?.getRoot();
+        };
+      },
+    });
   }
 
   /**
@@ -274,26 +166,20 @@ export default class SearchOpenPlugin extends Plugin {
    * the preview leaf becomes the active leaf while it is shown. Leave out a file
    * that was only ever shown by an embedded leaf.
    */
-  patchRecentFileTracker() {
+  patchRecentFileTracker(): Uninstall {
     const { workspace } = this.app;
     const tracker = workspace.recentFileTracker;
-    if (!tracker) return;
+    if (!tracker) return () => {};
     let previewed: TFile | null = null;
-    this.register(
-      around(tracker, {
-        onFileOpen: (old) =>
-          function (
-            this: unknown,
-            newFile: TFile | null,
-            oldFile: TFile | null,
-          ) {
-            const skip = oldFile !== null && oldFile === previewed;
-            const active = workspace.getActiveViewOfType(View)?.leaf;
-            previewed = active && isEmbeddedLeaf(active) ? newFile : null;
-            return skip ? undefined : old.call(this, newFile, oldFile);
-          },
-      }),
-    );
+    return around(tracker, {
+      onFileOpen: (old) =>
+        function (this: unknown, newFile: TFile | null, oldFile: TFile | null) {
+          const skip = oldFile !== null && oldFile === previewed;
+          const active = workspace.getActiveViewOfType(View)?.leaf;
+          previewed = active && isEmbeddedLeaf(active) ? newFile : null;
+          return skip ? undefined : old.call(this, newFile, oldFile);
+        },
+    });
   }
 
   /**
@@ -301,7 +187,9 @@ export default class SearchOpenPlugin extends Plugin {
    * `shouldAddFile` agrees. Keep previewed files out of its list while the modal
    * is open; the returned function ends that.
    */
-  holdBackRecentFiles(modal: { hasPreviewed(file: TFile): boolean }) {
+  holdBackRecentFiles(modal: {
+    hasPreviewed(file: TFile): boolean;
+  }): Uninstall {
     const recentFiles = this.app.plugins.plugins["recent-files-obsidian"];
     if (!recentFiles) return () => {};
     return around(recentFiles, {
@@ -310,28 +198,6 @@ export default class SearchOpenPlugin extends Plugin {
           return !modal.hasPreviewed(file) && old.call(this, file);
         },
     });
-  }
-
-  patchDragManager() {
-    const manager = this.app.dragManager;
-    if (!manager) return;
-    // Keep the plugin receiver across native method wrappers.
-    // eslint-disable-next-line @typescript-eslint/no-this-alias -- the wrappers below need the plugin, but `this` is the patched object
-    const self = this;
-
-    this.register(
-      around(Object.getPrototypeOf(manager) as DragManager, {
-        dragFile(old) {
-          return function (e: DragEvent, a: TFile) {
-            const result = old.call(this, e, a);
-
-            const modal = self.modal;
-            window.setTimeout(() => modal?.close(), 10);
-            return result;
-          };
-        },
-      }),
-    );
   }
 
   registerObsidianURIHandler() {
@@ -346,13 +212,13 @@ export default class SearchOpenPlugin extends Plugin {
   registerObsidianCommands() {
     this.addCommand({
       id: "search-obsidian-globally",
-      name: strings().cmdSearchGlobally,
+      name: strings.cmdSearchGlobally,
       callback: () => this.initModal({ ...this.state, query: "" }),
     });
 
     this.addCommand({
       id: "search-obsidian-globally-state",
-      name: strings().cmdSearchGloballyState,
+      name: strings.cmdSearchGloballyState,
       callback: () => this.initModal(this.state, this.lastCaret),
     });
   }

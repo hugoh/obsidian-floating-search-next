@@ -1,15 +1,9 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
 .search-open-modal {
 	width: 700px;
+	max-width: calc(100vw - 32px);
 	padding-bottom: 0;
 	transition: width 0.15s ease;
+	container-type: inline-size;
 }
 
 .search-open-modal.search-open-width {
@@ -19,7 +13,9 @@ If your plugin does not need CSS, delete this file.
 .search-open-modal-search-ctn,
 .search-open-modal-file-ctn {
 	height: 100%;
-	width: 100%;
+	min-width: 0;
+	min-height: 0;
+	flex: 1 1 0;
 }
 
 .search-open-modal-file-ctn .view-header {
@@ -28,34 +24,23 @@ If your plugin does not need CSS, delete this file.
 
 .search-open-modal-content {
 	height: 800px;
+	max-height: 75vh;
+	min-height: 0;
 	display: flex;
 	align-items: center;
-	flex-direction: row;
 }
 
 .search-open-modal-file-ctn .view-content {
 	height: 100%;
 }
 
-.search-open-modal .modal-close-button {
-	z-index: 40;
-}
-
+.search-open-embed-content,
 .search-open-embed-content .workspace-split.mod-vertical {
 	height: 100%;
 }
 
-.search-open-embed-content {
+.search-open-embed {
 	height: 100%;
-}
-
-.search-open-embed-content .cm-scroller {
-	margin-top: 20px;
-}
-
-.search-open-embed.search-open-embed {
-	height: 100%;
-	width: 100%;
 }
 
 .search-open-embed .workspace-leaf-resize-handle {
@@ -93,29 +78,11 @@ If your plugin does not need CSS, delete this file.
 	border-bottom: 3px solid var(--color-accent);
 }
 
-.search-open-modal-file-ctn:focus-within .cm-scroller {
-	background-color: var(--background-primary);
-}
-
 .search-open-embed .workspace-split {
 	background-color: var(--background-primary);
 }
 
 /* Keep the native floating preview usable in narrow windows. */
-.search-open-modal {
-	max-width: calc(100vw - 32px);
-	container-type: inline-size;
-}
-.search-open-modal-content {
-	max-height: 75vh;
-	min-height: 0;
-}
-.search-open-modal-search-ctn,
-.search-open-modal-file-ctn {
-	min-width: 0;
-	min-height: 0;
-	flex: 1 1 0;
-}
 @container (max-width: 650px) {
 	.search-open-modal-content {
 		flex-direction: column;
@@ -125,4 +92,9 @@ If your plugin does not need CSS, delete this file.
 		border-right: none;
 		border-bottom: 1px solid var(--background-secondary);
 	}
+}
+
+/* The matched text in the reading-mode preview; Obsidian itself only flashes it. */
+::highlight(search-open-match) {
+	background-color: var(--highlight-background, rgba(255, 208, 0, 0.4));
 }

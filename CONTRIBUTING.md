@@ -15,9 +15,11 @@ bun install
 bun run dev        # rebuild main.js on change
 bun run test       # unit tests (bun) and regression tests (node)
 bun run test:e2e   # builds, then runs the plugin in a real Obsidian
+bun run test:e2e:container # the same, in a Linux container: no window opens on your screen
 bun run screenshot # retakes media/screenshot.png for the README
 bun run lint       # eslint-plugin-obsidianmd, the rules the plugin review applies
 bun run typecheck  # plugin, unit tests and e2e specs
+bun run knip       # unused files, exports and dependencies (see knip.json)
 bun run build      # typecheck + production bundle
 hk check --all     # everything CI runs
 ```
@@ -31,22 +33,13 @@ By default it tests the latest release; CI also runs Obsidian 1.15.1, the
 oldest stable version at or above our minimum. Set `OBSIDIAN_VERSIONS` (for
 example `"1.15.1/earliest latest/latest"`) to test others.
 
-## Adding a language
-
-Plugin text lives in `src/i18n.ts`, in one typed object per language. English
-(`EN`) and Simplified Chinese (`ZH`) exist today; Traditional Chinese
-(`zh-TW`, `zh-HK`) currently falls back to English.
-
-1. Copy the `EN` block, rename it (for example `JA`) and translate every message.
-2. Add the language to the `Locale` type and to `TRANSLATIONS`, and teach
-   `resolveLocale` its Obsidian language code (`ja`, `fr`, ...). Obsidian reports
-   Simplified Chinese as `zh` and Traditional as `zh-TW`.
-3. Run `bun run test`. TypeScript refuses a language with a missing message, and
-   `src/i18n.test.ts` checks the language is complete and has no empty strings.
-
-Please translate by hand or have a native speaker review the result: a missing
-translation falls back to English, which is better than a wrong one. Mention
-the language in the pull request so the README can list it.
+`test:e2e` opens a real Obsidian window and takes focus, so typing elsewhere while it runs
+breaks the specs that wait for focus. `test:e2e:container` runs the same suite under a
+virtual display (as CI does) in Apple's `container` CLI, Docker or Podman, whichever is
+installed first, so it can run while you work. It builds `test/container/Containerfile`,
+copies the project in, installs dependencies for Linux and keeps its own downloads in
+`.obsidian-cache/container/`. Arguments go to wdio, for example
+`bun run test:e2e:container -- --spec ./test/specs/settings.e2e.ts`.
 
 ## Releasing
 

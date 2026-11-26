@@ -18,8 +18,8 @@ doubles (`harness.cjs`), so no Obsidian app, vault or desktop is modified.
   saving.
 - `embedded-leaf.test.cjs` runs the real `leafView.ts` (the split, its root and
   container, un-tabbing and unload) and the real patches in `main.ts`
-  (`getLeaf`, undo history, pinning, the drag handler, and unloading restoring
-  Obsidian's own methods).
+  (`getLeaf`, undo history, pinning, and the patches being applied only while a
+  search is open and put back when it closes) and the drag-to-close listener.
 - `scorecard.test.cjs` checks repository facts the plugin review looks at.
 
 Timers and deferred promises make the cancellation tests deterministic. These

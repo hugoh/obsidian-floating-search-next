@@ -52,6 +52,7 @@ class ElementStub {
     for (const callback of this.listeners.get(event.type) || []) callback(event);
   }
   closest() { return null; }
+  matches(selector) { return selector === ':focus-within' && this.focusWithin === true; }
   querySelector() { return null; }
   querySelectorAll() { return []; }
   getElementsByTagName() { return []; }
@@ -164,13 +165,11 @@ function createHarness() {
       // Like Obsidian: "tab" for the modifier alone, false without it.
       isModEvent: (event) => ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey ? 'tab' : false),
     },
-    getLanguage: () => 'en',
   };
   const spawned = [];
   function makeLeaf() {
     const leaf = {
       opened: [], viewStates: [], ephemeralStates: [], detached: false,
-      setPinned() {},
       async openFile(file, options) { this.opened.push({ file, options }); },
       async setViewState(state) { this.viewStates.push(state); },
       setEphemeralState(state) { this.ephemeralStates.push(state); },
@@ -184,14 +183,15 @@ function createHarness() {
     return leaf;
   }
   const leafModule = {
-    spawnLeafView() {
-      const leaf = leafModule.nextLeaf || makeLeaf();
-      leafModule.nextLeaf = undefined;
-      const embedded = { unloaded: false, unload() { this.unloaded = true; } };
-      spawned.push({ leaf, embedded });
-      return [leaf, embedded];
+    EmbeddedView: class {
+      constructor() {
+        this.leaf = leafModule.nextLeaf || makeLeaf();
+        leafModule.nextLeaf = undefined;
+        this.unloaded = false;
+        spawned.push({ leaf: this.leaf, embedded: this });
+      }
+      unload() { this.unloaded = true; }
     },
-    EmbeddedView: class {},
     isEmbeddedLeaf: () => false,
   };
   const sourceRoot = process.env.SEARCH_OPEN_TEST_SOURCE_ROOT || path.resolve(__dirname, '..');
@@ -210,7 +210,7 @@ function createHarness() {
       require(id) {
         if (id === 'obsidian') return obsidian;
         if (id === './leafView') return leafModule;
-        if (id === './i18n') return { strings: () => ({}) };
+        if (id === './i18n') return { strings: {} };
         if (id.startsWith('./')) return load(id.slice(2));
         if (id === 'monkey-around') return require('monkey-around');
         throw new Error(`Unexpected dependency: ${id}`);

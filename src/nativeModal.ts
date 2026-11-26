@@ -2,6 +2,7 @@ import {
   debounce,
   Keymap,
   Modal,
+  type Modifier,
   Notice,
   Platform,
   type SearchResultItem,
@@ -9,10 +10,12 @@ import {
   TFile,
   type WorkspaceLeaf,
 } from "obsidian";
+import { selectMatchedCard } from "./canvasSelection";
 import { strings } from "./i18n";
 import { LatestQueue } from "./latestQueue";
-import { type EmbeddedView, spawnLeafView } from "./leafView";
+import { EmbeddedView } from "./leafView";
 import type SearchOpenPlugin from "./main";
+import { markMatch } from "./matchHighlight";
 import type { SearchState } from "./settings";
 
 /**
@@ -35,7 +38,7 @@ export interface Caret {
 
 /** What the modal hands back on close, once the search view took its state. */
 export interface ClosingState {
-  state: SearchState;
+  state: Partial<SearchState>;
   caret: Caret;
 }
 
@@ -49,14 +52,15 @@ export class SearchOpenModal extends Modal {
   private searchEmbeddedView: EmbeddedView;
   private fileEmbeddedView: EmbeddedView | undefined;
 
-  searchLeaf: WorkspaceLeaf;
-  fileLeaf: WorkspaceLeaf | undefined;
+  private searchLeaf: WorkspaceLeaf;
+  private fileLeaf: WorkspaceLeaf | undefined;
 
   private cb: (closing?: ClosingState) => void;
   private state: SearchState;
   private readonly caret: Caret | undefined;
 
   private fileState: PreviewState | undefined;
+  private stopMarkingMatch = () => {};
   private readonly previewedPaths = new Set<string>();
   private stateApplied = false;
 
@@ -65,11 +69,24 @@ export class SearchOpenModal extends Modal {
 
   private closed = false;
   private readonly previews = new LatestQueue();
-  private inputCleanup: (() => void) | null = null;
 
   private debouncedAutoPreview = debounce(() => {
     this.autoPreviewFocusedItem();
   }, 150);
+
+  /** Typing invalidates whatever preview is showing or pending. */
+  private readonly clearPreviewOnInput = () => {
+    this.debouncedAutoPreview.cancel();
+    const hadPreview = Boolean(this.fileLeaf);
+    this.clearPreview();
+    // Detaching the preview leaf makes Obsidian drop focus to the page, which
+    // would swallow the rest of what the user is typing.
+    if (hadPreview) {
+      window.setTimeout(() => {
+        if (!this.closed) this.focusSearchInput();
+      }, 0);
+    }
+  };
 
   constructor(
     cb: (closing?: ClosingState) => void,
@@ -111,7 +128,7 @@ export class SearchOpenModal extends Modal {
   /** Tells the user something went wrong; the details go to the console. */
   private reportFailure(error: unknown) {
     console.error("Search & Open:", error);
-    new Notice(strings().errorGeneric);
+    new Notice(strings.errorGeneric);
   }
 
   private async build() {
@@ -124,7 +141,9 @@ export class SearchOpenModal extends Modal {
     this.initInstructions(
       modalEl.createDiv({ cls: "search-open-modal-instructions" }),
     );
-    this.initCss(contentEl, modalEl, containerEl);
+    contentEl.classList.add("search-open-modal-content");
+    modalEl.classList.add("search-open-modal");
+    containerEl.classList.add("search-open-modal-container");
     await this.initSearchView(this.searchCtnEl);
     if (this.closed) {
       this.searchLeaf?.detach();
@@ -132,28 +151,44 @@ export class SearchOpenModal extends Modal {
     }
     this.initInput();
     this.initContent();
+    this.closeOnResultDrag();
+  }
+
+  /**
+   * Dragging a result into the workspace leaves the modal in the way. It closes
+   * once the drag has started: removing the drag source sooner cancels it.
+   */
+  private closeOnResultDrag() {
+    this.searchCtnEl.addEventListener("dragstart", (e) => {
+      const target = e.target as Element | null;
+      if (!target?.closest(".tree-item")) return;
+      window.setTimeout(() => this.close(), 10);
+    });
   }
 
   onClose() {
     this.closed = true;
     this.debouncedAutoPreview.cancel();
-    this.inputCleanup?.();
-    this.inputCleanup = null;
+    const inputEl = this.searchInput;
+    inputEl?.removeEventListener("input", this.clearPreviewOnInput);
     this.clearPreview();
     const { contentEl } = this;
 
-    this.cb(this.stateApplied ? this.closingState() : undefined);
+    const closing = this.stateApplied ? this.closingState() : undefined;
 
     this.searchLeaf?.detach();
     this.fileLeaf?.detach();
     this.searchEmbeddedView?.unload();
     this.fileEmbeddedView?.unload();
     contentEl.empty();
+
+    // Last, because the callback removes the patches the detaching relies on.
+    this.cb(closing);
   }
 
   private initInstructions(instructionsEl: HTMLElement) {
     if (!this.plugin.settings.showInstructions) return;
-    const s = strings();
+    const s = strings;
     const hints: [key: string, text: string][] = [
       ["↑↓", s.instrNavigate],
       ["Shift+↑↓", s.instrCollapse],
@@ -170,22 +205,10 @@ export class SearchOpenModal extends Modal {
     }
   }
 
-  initCss(
-    contentEl: HTMLElement,
-    modalEl: HTMLElement,
-    containerEl: HTMLElement,
-  ) {
-    contentEl.classList.add("search-open-modal-content");
-    modalEl.classList.add("search-open-modal");
-    containerEl.classList.add("search-open-modal-container");
-  }
+  private async initSearchView(contentEl: HTMLElement) {
+    this.searchEmbeddedView = new EmbeddedView(contentEl, this.plugin);
+    this.searchLeaf = this.searchEmbeddedView.leaf;
 
-  async initSearchView(contentEl: HTMLElement) {
-    const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, contentEl);
-    this.searchLeaf = createdLeaf;
-    this.searchEmbeddedView = embeddedView;
-
-    this.searchLeaf.setPinned(true);
     const initialQuery = this.state.query ?? "";
     const initialState = { ...this.state, query: initialQuery };
     await this.searchLeaf.setViewState({
@@ -235,7 +258,8 @@ export class SearchOpenModal extends Modal {
   }
 
   private get searchInput(): HTMLInputElement | undefined {
-    return (this.searchLeaf.view as SearchView).searchComponent?.inputEl;
+    const view = this.searchLeaf?.view as SearchView | undefined;
+    return view?.searchComponent?.inputEl;
   }
 
   private focusSearchInput() {
@@ -243,7 +267,13 @@ export class SearchOpenModal extends Modal {
     if (inputEl) focusWithoutSuggestions(inputEl);
   }
 
-  initInput(retries = 10) {
+  /** Opening a preview takes focus; hand it back unless the user has gone into the preview. */
+  private refocusSearchInput() {
+    if (this.fileEl?.matches(":focus-within")) return;
+    this.focusSearchInput();
+  }
+
+  private initInput(retries = 10) {
     if (this.closed) return;
     const inputEl = this.searchInput;
     if (!inputEl) {
@@ -252,127 +282,96 @@ export class SearchOpenModal extends Modal {
       }
       return;
     }
-    const clear = () => {
-      this.debouncedAutoPreview.cancel();
-      this.clearPreview();
-    };
-    inputEl.addEventListener("input", clear);
-    this.inputCleanup = () => {
-      inputEl.removeEventListener("input", clear);
-      inputEl.onkeydown = null;
-    };
+    inputEl.addEventListener("input", this.clearPreviewOnInput);
     inputEl.focus();
-    inputEl.onkeydown = (e) => {
-      if (e.isComposing || e.key === "Process") {
-        return;
-      }
-      const currentView = this.searchLeaf.view as SearchView;
-      switch (e.key) {
-        case "ArrowDown":
-        case "n":
-          if (e.key === "n" && !e.ctrlKey) break;
-          if (e.key === "n") e.preventDefault();
+    this.registerKeys();
+  }
 
-          if (e.shiftKey) {
-            currentView.onKeyShowMoreAfter(e);
-            if (currentView.dom.focusedItem) {
-              if (currentView.dom.focusedItem.collapsible) {
-                currentView.dom.focusedItem.setCollapse(false);
-              }
-            }
-          } else {
-            currentView.onKeyArrowDownInFocus(e);
-            // Obsidian blurs the input here; keep it ready for the next key.
-            this.focusSearchInput();
-            this.debouncedAutoPreview();
-          }
-          break;
-        case "ArrowUp":
-        case "p":
-          if (e.key === "p" && !e.ctrlKey) break;
-          if (e.key === "p") e.preventDefault();
-
-          if (e.shiftKey) {
-            currentView.onKeyShowMoreBefore(e);
-            if (currentView.dom.focusedItem) {
-              if (currentView.dom.focusedItem.collapseEl) {
-                currentView.dom.focusedItem.setCollapse(true);
-              }
-            }
-          } else {
-            currentView.onKeyArrowUpInFocus(e);
-            this.focusSearchInput();
-            this.debouncedAutoPreview();
-          }
-          break;
-        case "ArrowLeft":
-          currentView.onKeyArrowLeftInFocus(e);
-          break;
-        case "ArrowRight":
-          currentView.onKeyArrowRightInFocus(e);
-          break;
-        case "Enter":
-          // Obsidian may still count the preview as the active leaf, and the
-          // getLeaf patch would then open the result inside the preview.
-          this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, {
-            focus: false,
-          });
-          {
-            // Opening it for real makes it a recent file after all.
-            const item = currentView.dom.focusedItem;
-            const file = item?.file ?? item?.parent.file;
-            if (file) this.previewedPaths.delete(file.path);
-          }
-          currentView.onKeyEnterInFocus(e);
-          if (currentView.dom.focusedItem && Keymap.isModEvent(e) !== "tab") {
-            this.close();
-          }
-          break;
-        case "Tab":
-          e.preventDefault();
-          if (e.shiftKey && this.fileLeaf) {
-            this.clearPreview();
-            break;
-          }
-
-          {
-            const focused = currentView.dom.focusedItem;
-            if (focused) this.previewItem(focused);
-          }
-          break;
-        case "e":
-          if (e.ctrlKey) {
-            e.preventDefault();
-            if (this.fileLeaf) {
-              const estate = this.fileLeaf.getViewState();
-              estate.state = {
-                ...estate.state,
-                mode: "preview" === estate.state?.mode ? "source" : "preview",
-              };
-              void this.fileLeaf
-                .setViewState(estate, { focus: true })
-                .catch((error) => this.reportFailure(error));
-              window.setTimeout(() => this.focusSearchInput(), 0);
-            }
-          }
-          break;
-        case "g":
-          if (this.fileLeaf && e.ctrlKey) {
-            e.preventDefault();
-            this.plugin.app.workspace.setActiveLeaf(this.fileLeaf, {
-              focus: true,
-            });
-          }
-          break;
-        case "C":
-          if (e.ctrlKey && e.shiftKey) {
-            e.preventDefault();
-            const text = currentView.dom.focusedItem?.el.innerText;
-            if (text) void navigator.clipboard.writeText(text);
-          }
-          break;
-      }
+  /**
+   * Keys in the search box drive the embedded search view, which is not the
+   * active leaf and so never sees them itself. Each handler passes on events
+   * from anywhere else, such as the preview, and while text is being composed.
+   */
+  private registerKeys() {
+    const on = (
+      modifiers: Modifier[] | null,
+      key: string,
+      handle: (e: KeyboardEvent) => unknown,
+    ) => {
+      this.scope.register(modifiers, key, (e) => {
+        if (e.isComposing || e.target !== this.searchInput) return true;
+        return handle(e);
+      });
     };
+    on(null, "ArrowDown", (e) => this.moveDown(e));
+    on(null, "ArrowUp", (e) => this.moveUp(e));
+    on(["Ctrl"], "n", (e) => {
+      this.moveDown(e);
+      return false;
+    });
+    on(["Ctrl"], "p", (e) => {
+      this.moveUp(e);
+      return false;
+    });
+    on(null, "Enter", (e) => this.openFocused(e));
+    on(null, "Tab", (e) => {
+      if (e.shiftKey && this.fileLeaf) {
+        this.clearPreview();
+        return false;
+      }
+      const focused = this.searchView.dom.focusedItem;
+      if (focused) this.previewItem(focused);
+      return false;
+    });
+    on(["Ctrl"], "g", () => {
+      if (!this.fileLeaf) return true;
+      this.plugin.app.workspace.setActiveLeaf(this.fileLeaf, { focus: true });
+      return false;
+    });
+  }
+
+  private get searchView() {
+    return this.searchLeaf.view as SearchView;
+  }
+
+  private moveDown(e: KeyboardEvent) {
+    const view = this.searchView;
+    if (e.shiftKey) {
+      view.onKeyShowMoreAfter(e);
+      const focused = view.dom.focusedItem;
+      if (focused?.collapsible) focused.setCollapse(false);
+      return;
+    }
+    view.onKeyArrowDownInFocus(e);
+    // Obsidian blurs the input here; keep it ready for the next key.
+    this.focusSearchInput();
+    this.debouncedAutoPreview();
+  }
+
+  private moveUp(e: KeyboardEvent) {
+    const view = this.searchView;
+    if (e.shiftKey) {
+      view.onKeyShowMoreBefore(e);
+      const focused = view.dom.focusedItem;
+      if (focused?.collapseEl) focused.setCollapse(true);
+      return;
+    }
+    view.onKeyArrowUpInFocus(e);
+    this.focusSearchInput();
+    this.debouncedAutoPreview();
+  }
+
+  private openFocused(e: KeyboardEvent) {
+    const view = this.searchView;
+    // Obsidian may still count the preview as the active leaf, and the
+    // getLeaf patch would then open the result inside the preview.
+    this.plugin.app.workspace.setActiveLeaf(this.searchLeaf, { focus: false });
+    // Opening it for real makes it a recent file after all.
+    const item = view.dom.focusedItem;
+    const file = item?.file ?? item?.parent.file;
+    if (file) this.previewedPaths.delete(file.path);
+    view.onKeyEnterInFocus(e);
+    if (view.dom.focusedItem && Keymap.isModEvent(e) !== "tab") this.close();
   }
 
   private autoPreviewFocusedItem() {
@@ -399,63 +398,46 @@ export class SearchOpenModal extends Modal {
     void this.initFileView(file, state);
   }
 
-  initContent() {
+  private initContent() {
     const { contentEl } = this;
     contentEl.onclick = (e) => {
       const resultElement = contentEl.getElementsByClassName(
         "search-results-children",
       )[0];
-      if (!resultElement || resultElement.children.length < 2) {
-        return;
-      }
+      if (!resultElement || resultElement.children.length < 2) return;
 
-      let targetElement = e.target as HTMLElement | null;
+      const target = e.target as HTMLElement | null;
 
+      // Without a preview, or with Alt held, clicking a result opens it.
       if (e.altKey || !this.fileLeaf) {
-        while (targetElement) {
-          if (targetElement.classList.contains("tree-item-icon")) {
-            break;
-          }
-          if (targetElement.classList.contains("search-result-hover-button")) {
-            break;
-          }
-          if (targetElement.classList.contains("tree-item")) {
-            this.close();
-            break;
-          }
-          targetElement = targetElement.parentElement;
+        const hit = target?.closest(
+          ".tree-item-icon, .search-result-hover-button, .tree-item",
+        );
+        if (hit?.matches(".tree-item-icon, .search-result-hover-button")) {
+          return;
         }
+        if (hit) this.close();
         return;
       }
 
-      if (this.fileLeaf) {
-        const currentView = this.searchLeaf.view as SearchView;
-
-        if (this.searchCtnEl.contains(targetElement)) {
-          while (targetElement) {
-            if (targetElement.classList.contains("tree-item")) {
-              break;
-            }
-            targetElement = targetElement.parentElement;
-          }
-          if (!targetElement) return;
-
-          for (const [file, item] of currentView.dom.resultDomLookup) {
-            if (item.el !== targetElement) continue;
-            currentView.dom.setFocusedItem(item);
-            void this.initFileView(file, undefined);
-            this.focusSearchInput();
-            break;
-          }
-        }
-
-        return;
+      // Otherwise it previews the clicked result.
+      if (!target || !this.searchCtnEl.contains(target)) return;
+      const row = target.closest(".tree-item");
+      if (!row) return;
+      const view = this.searchLeaf.view as SearchView;
+      for (const [file, item] of view.dom.resultDomLookup) {
+        if (item.el !== row) continue;
+        view.dom.setFocusedItem(item);
+        void this.initFileView(file, undefined);
+        this.focusSearchInput();
+        break;
       }
     };
   }
 
   private clearPreview() {
     this.previews.invalidate();
+    this.stopMarkingMatch();
     this.fileState = undefined;
     this.fileLeaf?.detach();
     this.fileEmbeddedView?.unload();
@@ -471,7 +453,7 @@ export class SearchOpenModal extends Modal {
     return this.previewedPaths.has(file.path);
   }
 
-  async initFileView(file: TFile, state: PreviewState | undefined) {
+  private async initFileView(file: TFile, state: PreviewState | undefined) {
     if (this.closed) return;
     this.previewedPaths.add(file.path);
     try {
@@ -485,17 +467,37 @@ export class SearchOpenModal extends Modal {
     }
   }
 
+  /** The preview is only ever shown in reading mode, never as an editor. */
+  private async openReadOnly(
+    leaf: WorkspaceLeaf,
+    file: TFile,
+    state: PreviewState | undefined,
+  ) {
+    await leaf.openFile(file, {
+      active: false,
+      state: { mode: "preview" },
+      eState: state,
+    });
+    selectMatchedCard(leaf, file, state?.match?.content);
+  }
+
+  private markPreviewMatch(state: PreviewState | undefined) {
+    this.stopMarkingMatch();
+    this.stopMarkingMatch = markMatch(
+      this.fileLeaf?.view.containerEl,
+      state?.match,
+    );
+  }
+
   private async renderFileView(
     file: TFile,
     state: PreviewState | undefined,
     isCurrent: () => boolean,
   ) {
     if (this.fileLeaf) {
-      await this.fileLeaf.openFile(file, {
-        active: false,
-        eState: state,
-      });
+      await this.openReadOnly(this.fileLeaf, file, state);
       if (this.closed || !isCurrent()) return;
+      this.markPreviewMatch(state);
 
       if (
         this.fileState?.match?.matches?.[0] === state?.match?.matches?.[0] &&
@@ -513,7 +515,7 @@ export class SearchOpenModal extends Modal {
         this.fileState = state;
         window.setTimeout(() => {
           if (this.closed || !isCurrent()) return;
-          this.focusSearchInput();
+          this.refocusSearchInput();
         }, 0);
       }
 
@@ -527,14 +529,7 @@ export class SearchOpenModal extends Modal {
     contentEl.addClass("has-file-ctn");
     this.modalEl.toggleClass("search-open-width", true);
     this.fileEl.onkeydown = (e) => {
-      if (e.ctrlKey && e.key === "g") {
-        e.preventDefault();
-        e.stopPropagation();
-
-        this.focusSearchInput();
-      }
-
-      if (e.key === "Tab" && e.ctrlKey) {
+      if (e.ctrlKey && (e.key === "g" || e.key === "Tab")) {
         e.preventDefault();
         e.stopPropagation();
 
@@ -542,18 +537,14 @@ export class SearchOpenModal extends Modal {
       }
     };
 
-    const [createdLeaf, embeddedView] = spawnLeafView(this.plugin, this.fileEl);
-    this.fileLeaf = createdLeaf;
-    this.fileEmbeddedView = embeddedView;
+    this.fileEmbeddedView = new EmbeddedView(this.fileEl, this.plugin);
+    this.fileLeaf = this.fileEmbeddedView.leaf;
 
-    this.fileLeaf.setPinned(true);
-    await this.fileLeaf.openFile(file, {
-      active: false,
-      eState: state,
-    });
+    await this.openReadOnly(this.fileLeaf, file, state);
     if (this.closed || !isCurrent()) return;
+    this.markPreviewMatch(state);
     this.fileState = state;
 
-    this.focusSearchInput();
+    this.refocusSearchInput();
   }
 }

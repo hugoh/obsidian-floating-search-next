@@ -1,4 +1,4 @@
-export type SortOrder =
+type SortOrder =
   | "byRelevance"
   | "alphabetical"
   | "alphabeticalReverse"
@@ -7,13 +7,18 @@ export type SortOrder =
   | "byCreatedTime"
   | "byCreatedTimeReverse";
 
+/**
+ * The keys of Obsidian's own search view state that are kept between searches.
+ * They are handed to the search view as-is, which is why the plugin itself never
+ * reads most of them.
+ */
 export interface SearchState extends Record<string, unknown> {
-  collapseAll?: boolean;
-  explainSearch?: boolean;
-  extraContext?: boolean;
-  matchingCase?: boolean;
+  collapseAll: boolean;
+  explainSearch: boolean;
+  extraContext: boolean;
+  matchingCase: boolean;
   query: string;
-  sortOrder?: SortOrder;
+  sortOrder: SortOrder;
 }
 
 export interface SearchOpenSettings {
@@ -60,26 +65,24 @@ function sanitizeViewState(raw: unknown): SearchState {
   const defaults = DEFAULT_SETTINGS.searchViewState;
   const state = isRecord(raw) ? raw : {};
   return {
-    collapseAll: bool(state.collapseAll, defaults.collapseAll ?? false),
-    explainSearch: bool(state.explainSearch, defaults.explainSearch ?? false),
-    extraContext: bool(state.extraContext, defaults.extraContext ?? false),
-    matchingCase: bool(state.matchingCase, defaults.matchingCase ?? false),
+    collapseAll: bool(state.collapseAll, defaults.collapseAll),
+    explainSearch: bool(state.explainSearch, defaults.explainSearch),
+    extraContext: bool(state.extraContext, defaults.extraContext),
+    matchingCase: bool(state.matchingCase, defaults.matchingCase),
     // Never restore a saved query: searches open empty, and queries may be private.
     query: "",
-    sortOrder: oneOf(
-      state.sortOrder,
-      SORT_ORDERS,
-      defaults.sortOrder ?? "byRelevance",
-    ),
+    sortOrder: oneOf(state.sortOrder, SORT_ORDERS, defaults.sortOrder),
   };
 }
 
 /** Turns whatever data.json held into valid settings; never throws. */
 export function sanitizeSettings(raw: unknown): SearchOpenSettings {
   const data = isRecord(raw) ? raw : {};
-  const d = DEFAULT_SETTINGS;
   return {
     searchViewState: sanitizeViewState(data.searchViewState),
-    showInstructions: bool(data.showInstructions, d.showInstructions),
+    showInstructions: bool(
+      data.showInstructions,
+      DEFAULT_SETTINGS.showInstructions,
+    ),
   };
 }

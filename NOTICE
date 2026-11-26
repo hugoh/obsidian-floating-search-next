@@ -23,9 +23,9 @@ Project lineage (all GPL-3.0, verified against each repository's LICENSE)
   were later removed.)
 - Obsidian Float Search, fork by Peingxious
   https://github.com/Peingxious/Obsidian-Float-Search
-  Contributed: the crash guard for highlights in embedded previews and
-  applying the patches on first use. (Its exclusions, saved searches and
-  query engine were later removed.)
+  Contributed: the crash guard for highlights in embedded previews (later
+  removed with the editable preview) and applying the patches on first use.
+  (Its exclusions, saved searches and query engine were later removed.)
 
 Reviewed but not included: https://github.com/smilingpoplar/Obsidian-Float-Search
 (GPL-3.0). Its changes are superseded by or redundant with the code above.

@@ -62,6 +62,17 @@ test('native search clears its preview when no result is focused', async () => {
   assert.equal(modal.fileLeaf, undefined);
 });
 
+test('the preview always opens in reading mode, first open and reuse alike', async () => {
+  const h = createHarness();
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  await modal.initFileView(new h.TFile('first.md'), undefined);
+  await modal.initFileView(new h.TFile('second.md'), undefined);
+  const { opened } = h.spawned[0].leaf;
+  assert.equal(opened.length, 2);
+  for (const { options } of opened) assert.equal(options.state.mode, 'preview');
+});
+
 test('native initialization cannot change selection after closing during delayed setState', async () => {
   const h = createHarness();
   const pending = deferred();
@@ -80,18 +91,18 @@ test('native initialization cannot change selection after closing during delayed
   assert.deepEqual(h.clock.errors, []);
 });
 
-test('the undo-history patch only skips embedded search leaves', () => {
+test('the undo-history patch only skips embedded leaves', () => {
   const h = createHarness();
   const { Workspace } = h.obsidian;
   Workspace.prototype.pushUndoHistory = () => 'recorded';
-  const uninstallers = [];
-  h.default.prototype.patchWorkspace.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspace.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
   const leafOf = (embedded) => ({ embedded, getViewState: () => ({ type: 'search' }) });
   const workspace = new Workspace();
   assert.equal(workspace.pushUndoHistory(leafOf(false), 'id'), 'recorded', 'a normal search view keeps its history');
   assert.equal(workspace.pushUndoHistory(leafOf(true), 'id'), undefined, 'the embedded one is skipped');
-  uninstallers.forEach((uninstall) => uninstall());
+  assert.equal(workspace.pushUndoHistory({ embedded: true, getViewState: () => ({ type: 'markdown' }) }, 'id'), undefined, 'so is an embedded preview');
+  uninstall();
 });
 
 test('unloading closes the modal first, then saves and drops the pending timer', () => {
@@ -198,4 +209,205 @@ test('closing before the search view took its state reports no state to save', a
   later.onClose();
   assert.equal(settled.length, 1);
   assert.equal(settled[0].state.query, 'needle');
+});
+
+function canvasPreview(h, { showing }) {
+  const selected = [];
+  const nodes = [{ id: 'a', text: 'first' }, { id: 'b', text: 'second' }];
+  const canvas = {
+    data: { nodes },
+    nodes: new Map(nodes.map((node) => [node.id, node])),
+    selectOnly: (node) => selected.push(node.text),
+    zoomToSelection: () => selected.push('zoomed'),
+  };
+  const file = new h.TFile('board.canvas');
+  const leaf = h.makeLeaf();
+  const loaded = deferred();
+  leaf.openFile = () => loaded.promise.then(() => { leaf.view = { ...leaf.view, canvas, file: showing(file) }; });
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  return { modal, file, selected, loaded };
+}
+
+test('the matching canvas card is selected once the canvas has loaded, however long that takes', async () => {
+  const h = createHarness();
+  const { modal, file, selected, loaded } = canvasPreview(h, { showing: (f) => f });
+  const preview = modal.initFileView(file, { match: { content: 'second', matches: [] } });
+  await h.clock.tick(500);
+  assert.deepEqual(selected, [], 'nothing can be selected before the canvas exists');
+  loaded.resolve();
+  await preview;
+  assert.deepEqual(selected, ['second', 'zoomed']);
+});
+
+test('a canvas leaf still showing another file gets no card selected', async () => {
+  const h = createHarness();
+  const { modal, file, selected, loaded } = canvasPreview(h, { showing: () => new h.TFile('other.canvas') });
+  const preview = modal.initFileView(file, { match: { content: 'first', matches: [] } });
+  loaded.resolve();
+  await preview;
+  assert.deepEqual(selected, []);
+});
+
+async function openedModal(h) {
+  h.leafModule.nextLeaf = h.makeLeaf();
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  await modal.open();
+  return modal;
+}
+
+test('dragging a result out of the modal closes it, once the drag has started', async () => {
+  const h = createHarness();
+  const modal = await openedModal(h);
+  modal.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: (selector) => (selector === '.tree-item' ? {} : null) } });
+  assert.equal(modal.isOpen, true, 'closing at once would cancel the drag');
+  await h.clock.tick(20);
+  assert.equal(modal.isOpen, false);
+});
+
+test('dragging something that is not a result leaves the modal open', async () => {
+  const h = createHarness();
+  const modal = await openedModal(h);
+  modal.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: () => null } });
+  await h.clock.tick(20);
+  assert.equal(modal.isOpen, true);
+});
+
+test('a drag that outlives its modal does not close the next one', async () => {
+  const h = createHarness();
+  const first = await openedModal(h);
+  first.searchCtnEl.dispatchEvent({ type: 'dragstart', target: { closest: () => ({}) } });
+  first.close();
+  const second = await openedModal(h);
+  await h.clock.tick(20);
+  assert.equal(second.isOpen, true);
+});
+
+function pluginIn(h) {
+  const plugin = new h.default(h.app, {});
+  Object.assign(plugin, {
+    app: h.app,
+    settings: { showInstructions: false, searchViewState: {} },
+    state: { query: '' },
+  });
+  h.app.plugins = { plugins: {} };
+  h.leafModule.nextLeaf = h.makeLeaf();
+  return plugin;
+}
+
+function patchableMethods(h) {
+  const { Workspace, WorkspaceLeaf } = h.obsidian;
+  const originals = {
+    getLeaf: function () {}, pushUndoHistory: function () {}, getRoot: function () {},
+  };
+  Object.assign(Workspace.prototype, { getLeaf: originals.getLeaf, pushUndoHistory: originals.pushUndoHistory });
+  Object.assign(WorkspaceLeaf.prototype, { getRoot: originals.getRoot });
+  const untouched = () =>
+    Workspace.prototype.getLeaf === originals.getLeaf &&
+    Workspace.prototype.pushUndoHistory === originals.pushUndoHistory &&
+    WorkspaceLeaf.prototype.getRoot === originals.getRoot &&
+    !Object.hasOwn(Workspace.prototype, 'setActiveLeaf');
+  return { untouched };
+}
+
+test('Obsidian is patched only while a search is open', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  assert.equal(untouched(), true, 'nothing is patched before a search opens');
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  assert.equal(untouched(), false, 'patched while the modal is open');
+  plugin.modal.close();
+  assert.equal(untouched(), true, 'and put back as soon as it closes');
+});
+
+test('reopening a search swaps the patches instead of stacking them', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  plugin.initModal({ query: '' });
+  h.leafModule.nextLeaf = h.makeLeaf();
+  plugin.initModal({ query: 'again' });
+  await h.clock.tick(0);
+  plugin.modal.close();
+  assert.equal(untouched(), true);
+});
+
+test('a patch that fails to install leaves nothing patched, and the next search tries again', async () => {
+  const h = createHarness();
+  const { untouched } = patchableMethods(h);
+  const plugin = pluginIn(h);
+  const real = plugin.patchRecentFileTracker;
+  plugin.patchRecentFileTracker = () => { throw new Error('boom'); };
+  assert.throws(() => plugin.initModal({ query: '' }), /boom/);
+  assert.equal(untouched(), true, 'what was already patched is undone');
+  plugin.patchRecentFileTracker = real;
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  assert.equal(untouched(), false);
+  plugin.modal.close();
+});
+
+test('the patches are still in place while the modal detaches its leaves', async () => {
+  const h = createHarness();
+  const { Workspace } = h.obsidian;
+  const recorded = [];
+  Workspace.prototype.pushUndoHistory = (leaf) => recorded.push(leaf);
+  const plugin = pluginIn(h);
+  h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf.embedded);
+  const leaf = h.leafModule.nextLeaf;
+  Object.assign(leaf, { embedded: true, getViewState: () => ({ type: 'search' }) });
+  leaf.detach = function () { new Workspace().pushUndoHistory(this, 'id'); };
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  plugin.modal.close();
+  assert.deepEqual(recorded, [], 'closing a search must not add it to Obsidian\'s closed-tab history');
+});
+
+test('a previewed note is not added to the closed-tab history either', async () => {
+  const h = createHarness();
+  const { Workspace } = h.obsidian;
+  const recorded = [];
+  Workspace.prototype.pushUndoHistory = (leaf) => recorded.push(leaf);
+  const plugin = pluginIn(h);
+  h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf.embedded);
+  const preview = h.makeLeaf();
+  Object.assign(preview, { embedded: true, getViewState: () => ({ type: 'markdown' }) });
+  preview.detach = function () { new Workspace().pushUndoHistory(this, 'id'); };
+  plugin.initModal({ query: '' });
+  await h.clock.tick(0);
+  h.leafModule.nextLeaf = preview;
+  await plugin.modal.initFileView(new h.TFile('note.md'), undefined);
+  plugin.modal.close();
+  assert.deepEqual(recorded, []);
+});
+
+async function previewFinishing(h, { focusInPreview }) {
+  const opened = deferred();
+  const leaf = h.makeLeaf();
+  leaf.openFile = () => opened.promise;
+  h.leafModule.nextLeaf = leaf;
+  const modal = new h.SearchOpenModal(() => {}, h.plugin, { query: 'needle' });
+  modal.searchLeaf = h.makeLeaf();
+  const input = modal.searchLeaf.view.searchComponent.inputEl;
+  const preview = modal.initFileView(new h.TFile('slow.md'), undefined);
+  await h.clock.microtasks();
+  modal.fileEl.focusWithin = focusInPreview;
+  const before = input.focusCount;
+  opened.resolve();
+  await preview;
+  await h.clock.tick(10);
+  return input.focusCount - before;
+}
+
+test('a preview that finishes opening gives focus back to the search box', async () => {
+  const h = createHarness();
+  assert.equal(await previewFinishing(h, { focusInPreview: false }), 1);
+});
+
+test('a preview that finishes opening leaves focus alone once the user has moved into it', async () => {
+  const h = createHarness();
+  assert.equal(await previewFinishing(h, { focusInPreview: true }), 0);
 });

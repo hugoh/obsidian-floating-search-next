@@ -1,5 +1,4 @@
-# Prose is not hard-wrapped (several documents are Chinese/English), and the
-# README keeps the upstream badge and button markup.
+# Prose is not hard-wrapped, and the README keeps the upstream badge and button markup.
 [global]
 disable = ["MD013", "MD036"]
 

@@ -55,6 +55,165 @@ describe("Search & Open modal", () => {
       .waitForExist({ timeoutMsg: "no preview pane appeared" });
   });
 
+  // Reading mode only flashes the matched block for a moment; the match itself
+  // has to stay marked, as it does in an editor.
+  describe("the match in the preview", () => {
+    const markedText = () =>
+      browser.execute(() => {
+        const highlight = (
+          CSS as unknown as {
+            highlights: Map<string, Iterable<{ toString(): string }>>;
+          }
+        ).highlights.get("search-open-match");
+        return highlight ? Array.from(highlight, (range) => String(range)) : [];
+      });
+
+    // The registry can hold a mark that the page never draws.
+    const paintedBackground = () =>
+      browser.execute(() => {
+        const highlight = (
+          CSS as unknown as { highlights: Map<string, Iterable<Range>> }
+        ).highlights.get("search-open-match");
+        const element = highlight
+          ? Array.from(highlight)[0]?.startContainer.parentElement
+          : null;
+        return element
+          ? getComputedStyle(element, "::highlight(search-open-match)")
+              .backgroundColor
+          : "";
+      });
+
+    async function previewFirstMatch() {
+      await searchFor("pineapple");
+      await waitForResults();
+      // The second row is the first match of the first file.
+      await browser.keys(["ArrowDown", "ArrowDown", "Tab"]);
+      await browser
+        .$(".search-open-modal .search-open-modal-file-ctn")
+        .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    }
+
+    it("stays marked after Obsidian's flash has faded", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0, {
+        timeoutMsg: "the matched text was never marked",
+      });
+      await browser.pause(3000);
+      const marked = await markedText();
+      expect(marked.length).toBeGreaterThan(0);
+      for (const text of marked) expect(text.toLowerCase()).toBe("pineapple");
+    });
+
+    it("is drawn, not just registered", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0);
+      const background = await paintedBackground();
+      expect(background).not.toBe("");
+      expect(background).not.toBe("rgba(0, 0, 0, 0)");
+    });
+
+    it("is cleared when the modal closes", async () => {
+      await previewFirstMatch();
+      await browser.waitUntil(async () => (await markedText()).length > 0);
+      await closeModals();
+      await browser.waitUntil(async () => (await markedText()).length === 0, {
+        timeoutMsg: "the mark outlived the modal",
+      });
+    });
+  });
+
+  // Obsidian's search addon runs highlight clean-up on markdown editors on
+  // every search. An editor inside the embedded preview once lacked the field
+  // it reads and threw "Field is not present in this state"; the preview is
+  // now reading mode and the crash guard is gone, so this keeps it honest.
+  it("survives a second search while a preview is open", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await focusFirstResult();
+    const preview = ".search-open-modal .search-open-modal-file-ctn";
+    await browser
+      .$(preview)
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+
+    await browser.execute(() => {
+      const seen: string[] = [];
+      const target = window as unknown as { __searchOpenErrors: string[] };
+      target.__searchOpenErrors = seen;
+      window.addEventListener("error", (e) =>
+        seen.push(String(e.error ?? e.message)),
+      );
+      window.addEventListener("unhandledrejection", (e) =>
+        seen.push(String(e.reason)),
+      );
+      const original = console.error.bind(console);
+      console.error = (...args: unknown[]) => {
+        seen.push(args.map(String).join(" "));
+        original(...args);
+      };
+    });
+
+    // Typing over a selected query runs a second search.
+    await browser.execute((selector) => {
+      document.querySelector<HTMLInputElement>(selector)?.select();
+    }, ".search-open-modal .search-input-container input");
+    // One key at a time: the first one closes the preview and focus must
+    // come back to the input before the next arrives.
+    for (const key of "banana") {
+      await browser.keys([key]);
+      await browser.pause(50);
+    }
+    await browser.waitUntil(
+      async () => {
+        const matched = await browser.execute(
+          (selector) =>
+            Array.from(
+              document.querySelectorAll<HTMLElement>(selector),
+              (el) => el.textContent ?? "",
+            ),
+          ".search-open-modal .search-result-file-matched-text",
+        );
+        return matched.length > 0 && matched.every((t) => /banana/i.test(t));
+      },
+      { timeoutMsg: "the second search never replaced the results" },
+    );
+
+    // Preview a result of the second search, then run what the addon runs.
+    await focusFirstResult();
+    await browser.$(preview).waitForExist({ timeoutMsg: "no second preview" });
+    await browser.waitUntil(
+      async () =>
+        browser.executeObsidian(
+          ({ app }, id) =>
+            Boolean(app.plugins.plugins[id].modal.fileLeaf?.view.file),
+          PLUGIN_ID,
+        ),
+      { timeoutMsg: "the second preview never opened a file" },
+    );
+    const thrown = await browser.executeObsidian(({ app }, id) => {
+      const view = app.plugins.plugins[id].modal.fileLeaf?.view as unknown as
+        | { editor?: Record<string, (() => unknown) | undefined> }
+        | undefined;
+      const out: string[] = [];
+      for (const name of ["removeHighlights", "hasHighlight"]) {
+        try {
+          view?.editor?.[name]?.();
+        } catch (error) {
+          out.push(`${name}: ${String(error)}`);
+        }
+      }
+      return out;
+    }, PLUGIN_ID);
+    expect(thrown).toEqual([]);
+
+    const seen = await browser.execute(
+      () =>
+        (window as unknown as { __searchOpenErrors: string[] })
+          .__searchOpenErrors,
+    );
+    expect(seen.filter((m) => /not present in this state/.test(m))).toEqual([]);
+    expect(await browser.$(".search-open-modal").isExisting()).toBe(true);
+  });
+
   it("remembers the sort order chosen in the modal", async () => {
     await waitForPlugin();
     await browser.executeObsidianCommand(
@@ -106,6 +265,19 @@ describe("Search & Open modal", () => {
     await browser.waitUntil(async () => (await activePath()) === focusedPath, {
       timeoutMsg: `Enter did not open ${focusedPath}`,
     });
+    await browser
+      .$(".search-open-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+  });
+
+  it("closes the modal when a result is dragged out", async () => {
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.execute((selector) => {
+      document
+        .querySelector(selector)
+        ?.dispatchEvent(new DragEvent("dragstart", { bubbles: true }));
+    }, TITLES);
     await browser
       .$(".search-open-modal")
       .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
@@ -464,6 +636,125 @@ describe("Search & Open modal", () => {
         PLUGIN_ID,
       ),
     ).toBe(true);
+  });
+
+  it("leaves nothing in Obsidian's closed-tab history after a search and a preview", async () => {
+    const closedTabs = () =>
+      browser.executeObsidian(
+        ({ app }) =>
+          (app.workspace as unknown as { undoHistory: unknown[] }).undoHistory
+            .length,
+      );
+    await waitForPlugin();
+    const before = await closedTabs();
+    await searchFor("pineapple");
+    await waitForResults();
+    await browser.keys(["ArrowDown", "Tab"]);
+    await browser
+      .$(".search-open-modal .search-open-modal-file-ctn")
+      .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    await closeModals();
+    await browser
+      .$(".search-open-modal")
+      .waitForExist({ reverse: true, timeoutMsg: "the modal stayed open" });
+    expect(await closedTabs()).toBe(before);
+  });
+
+  describe("the embedded leaves", () => {
+    async function previewFirstResult() {
+      await searchFor("pineapple");
+      await waitForResults();
+      await browser.keys(["ArrowDown", "Tab"]);
+      await browser
+        .$(".search-open-modal .search-open-modal-file-ctn")
+        .waitForExist({ timeoutMsg: "no preview pane appeared" });
+    }
+
+    it("resolve to the workspace root", async () => {
+      await previewFirstResult();
+      const roots = await browser.executeObsidian(({ app }, id) => {
+        const modal = app.plugins.plugins[id].modal;
+        return [modal.searchLeaf, modal.fileLeaf].map(
+          (leaf) => leaf?.getRoot() === app.workspace.rootSplit,
+        );
+      }, PLUGIN_ID);
+      expect(roots).toEqual([true, true]);
+    });
+
+    it("are never the most recent leaf, even once activated", async () => {
+      await previewFirstResult();
+      const embedded = await browser.executeObsidian(({ app }, id) => {
+        const { fileLeaf } = app.plugins.plugins[id].modal;
+        if (fileLeaf) app.workspace.setActiveLeaf(fileLeaf, { focus: true });
+        const workspace = app.workspace as unknown as {
+          getMostRecentLeaf(): { containerEl: HTMLElement } | null;
+        };
+        return Boolean(
+          workspace
+            .getMostRecentLeaf()
+            ?.containerEl.matches(".search-open-embed .workspace-leaf"),
+        );
+      }, PLUGIN_ID);
+      expect(embedded).toBe(false);
+    });
+
+    it("keep a link clicked in the preview from opening in the workspace", async () => {
+      await waitForPlugin();
+      const files = () =>
+        browser.executeObsidian(({ app }) => {
+          const paths: string[] = [];
+          app.workspace.iterateAllLeaves((leaf) => {
+            const path = (leaf.view as { file?: { path: string } }).file?.path;
+            if (path === "Other.md") paths.push(path);
+          });
+          return paths.length;
+        });
+      await browser.executeObsidian(async ({ app }) => {
+        await app.vault.create("Linker.md", "go to [[Other]] linkprobexyz");
+      });
+      try {
+        await searchFor("linkprobexyz");
+        await waitForResults();
+        await browser.keys(["ArrowDown", "Tab"]);
+        const link = ".search-open-modal-file-ctn a.internal-link";
+        await browser.$(link).waitForExist();
+        const before = await files();
+        await browser.$(link).click();
+        await browser.pause(1000);
+        expect(await files()).toBe(before);
+      } finally {
+        await browser.executeObsidian(async ({ app }) => {
+          const note = app.vault.getFileByPath("Linker.md");
+          if (note) await app.vault.delete(note);
+        });
+      }
+    });
+  });
+
+  it("puts Obsidian's own workspace methods back as soon as the modal closes", async () => {
+    await waitForPlugin();
+    const { before, open, closed } = await browser.executeObsidian(
+      ({ app }, id) => {
+        const proto = Object.getPrototypeOf(app.workspace) as Record<
+          string,
+          unknown
+        >;
+        const methods = ["getLeaf", "pushUndoHistory"];
+        const native = methods.map((name) => proto[name]);
+        const sameAsNative = () =>
+          methods.every((name, index) => proto[name] === native[index]);
+        const before = sameAsNative();
+        const plugin = app.plugins.plugins[id];
+        plugin.initModal({ ...plugin.state, query: "" });
+        const open = sameAsNative();
+        plugin.modal.close();
+        return { before, open, closed: sameAsNative() };
+      },
+      PLUGIN_ID,
+    );
+    expect(before).toBe(true);
+    expect(open).toBe(false);
+    expect(closed).toBe(true);
   });
 
   it("puts Obsidian's own workspace methods back when the plugin is disabled", async () => {

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "scripts/*.mjs",
+    "test/specs/**/*.ts",
+    "test/screenshots/*.ts",
+    "tests/*.test.cjs"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "test/**/*.{ts,mts}",
+    "scripts/*.mjs",
+    "tests/*.cjs"
+  ],
+  "ignoreDependencies": ["@wdio/spec-reporter"]
+}

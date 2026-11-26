@@ -3,11 +3,11 @@ const assert = require('node:assert/strict');
 const { createHarness, ElementStub } = require('./harness.cjs');
 
 function embed(h) {
-  const { spawnLeafView, isEmbeddedLeaf } = h.realLeafView();
+  const { EmbeddedView, isEmbeddedLeaf } = h.realLeafView();
   const target = new ElementStub();
   target.ownerDocument = {};
-  const [leaf, view] = spawnLeafView({ app: h.app }, target);
-  return { leaf, view, target, isEmbeddedLeaf };
+  const view = new EmbeddedView(target, { app: h.app });
+  return { leaf: view.leaf, view, target, isEmbeddedLeaf };
 }
 
 test('the embedded view puts a leaf in its own split inside the target element', () => {
@@ -61,10 +61,9 @@ function patchedWorkspace(h) {
     pushUndoHistory: () => 'recorded',
   };
   Object.assign(Workspace.prototype, originals);
-  const uninstallers = [];
-  h.default.prototype.patchWorkspace.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchWorkspace.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => Boolean(leaf?.embedded);
-  return { Workspace, originals, uninstall: () => uninstallers.forEach((fn) => fn()) };
+  return { Workspace, originals, uninstall };
 }
 
 test('getLeaf keeps a link opened inside the embedded preview in that preview', () => {
@@ -104,62 +103,13 @@ test('unloading the plugin puts Obsidian\'s own workspace methods back', () => {
   assert.equal(Object.hasOwn(Workspace.prototype, 'setActiveLeaf'), false);
 });
 
-test('an embedded leaf stays pinned, a normal one does not', () => {
-  const h = createHarness();
-  const { WorkspaceLeaf } = h.obsidian;
-  WorkspaceLeaf.prototype.setPinned = function (pinned) { this.pinned = pinned; };
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
-  h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
-  const leafOf = (embedded) => Object.assign(Object.create(WorkspaceLeaf.prototype), { embedded });
-  const embedded = leafOf(true);
-  embedded.setPinned(false);
-  assert.equal(embedded.pinned, true);
-  const normal = leafOf(false);
-  normal.setPinned(false);
-  assert.equal(normal.pinned, false);
-  uninstallers.forEach((fn) => fn());
-});
-
-test('dragging a file closes the modal that was open, not one opened a moment later', async () => {
-  const h = createHarness();
-  const manager = Object.create({ dragFile() { return 'dragged'; } });
-  const closed = [];
-  const first = { close() { closed.push('first'); } };
-  const second = { close() { closed.push('second'); } };
-  const uninstallers = [];
-  const plugin = { app: { dragManager: manager }, modal: first, register: (fn) => uninstallers.push(fn) };
-  h.default.prototype.patchDragManager.call(plugin);
-  assert.equal(manager.dragFile({}, {}), 'dragged');
-  plugin.modal = second;
-  await h.clock.tick(20);
-  assert.deepEqual(closed, ['first']);
-  uninstallers.forEach((fn) => fn());
-});
-
-test('a failed patch run is retried on the next open instead of being marked done', () => {
-  const h = createHarness();
-  let attempts = 0;
-  const plugin = {
-    patched: false,
-    patchWorkspace() { attempts++; throw new Error('boom'); },
-    patchWorkspaceLeaf() {},
-    patchDragManager() {},
-    patchEditorHighlights() {},
-  };
-  assert.throws(() => h.default.prototype.ensurePatched.call(plugin), /boom/);
-  assert.throws(() => h.default.prototype.ensurePatched.call(plugin), /boom/);
-  assert.equal(attempts, 2);
-});
-
 test('the tracker patch skips a file that was only shown by an embedded leaf', () => {
   const h = createHarness();
   const collected = [];
   const tracker = { onFileOpen(_next, previous) { if (previous) collected.push(previous); } };
   const original = tracker.onFileOpen;
   h.app.workspace.recentFileTracker = tracker;
-  const uninstallers = [];
-  h.default.prototype.patchRecentFileTracker.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
+  const uninstall = h.default.prototype.patchRecentFileTracker.call({ app: h.app });
   h.leafModule.isEmbeddedLeaf = (leaf) => leaf.embedded;
   const activate = (embedded) => { h.app.workspace.activeView = { leaf: { embedded } }; };
   const note = { path: 'note.md' };
@@ -176,7 +126,7 @@ test('the tracker patch skips a file that was only shown by an embedded leaf', (
   tracker.onFileOpen(note, opened);
   assert.deepEqual(collected, [note, opened], 'a file opened for real is recorded when replaced');
 
-  uninstallers.forEach((fn) => fn());
+  uninstall();
   assert.equal(tracker.onFileOpen, original, 'unloading restores the tracker');
 });
 
@@ -199,50 +149,12 @@ test('holding back the Recent Files plugin does nothing when it is not installed
   assert.doesNotThrow(release);
 });
 
-test('the matching canvas card is selected once the canvas has loaded, however long that takes', async () => {
+test('the leaf patch leaves openFile alone', () => {
   const h = createHarness();
   const { WorkspaceLeaf } = h.obsidian;
-  const loaded = { resolve: undefined };
-  WorkspaceLeaf.prototype.openFile = function () {
-    return new Promise((resolve) => { loaded.resolve = () => { this.view = { canvas, file }; resolve(); }; });
-  };
-  const selected = [];
-  const nodes = [{ id: 'a', text: 'first' }, { id: 'b', text: 'second' }];
-  const canvas = {
-    data: { nodes },
-    nodes: new Map(nodes.map((node) => [node.id, node])),
-    selectOnly: (node) => selected.push(node.text),
-    zoomToSelection: () => selected.push('zoomed'),
-  };
-  const file = { extension: 'canvas' };
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
-  h.leafModule.isEmbeddedLeaf = () => true;
-
-  const leaf = Object.create(WorkspaceLeaf.prototype);
-  const opening = leaf.openFile(file, { eState: { match: { content: 'second' } } });
-  await h.clock.tick(500);
-  assert.deepEqual(selected, [], 'nothing can be selected before the canvas exists');
-  loaded.resolve();
-  await opening;
-  assert.deepEqual(selected, ['second', 'zoomed']);
-  uninstallers.forEach((fn) => fn());
-});
-
-test('an older open that finishes late does not select a card in the newer file', async () => {
-  const h = createHarness();
-  const { WorkspaceLeaf } = h.obsidian;
-  const selected = [];
-  const canvas = { data: { nodes: [{ id: 'a', text: 'card' }] }, nodes: new Map([['a', { id: 'a', text: 'card' }]]), selectOnly: () => selected.push('selected'), zoomToSelection() {} };
-  const first = { extension: 'canvas' };
-  const second = { extension: 'canvas' };
-  WorkspaceLeaf.prototype.openFile = function () { return Promise.resolve(); };
-  const uninstallers = [];
-  h.default.prototype.patchWorkspaceLeaf.call({ app: h.app, register: (fn) => uninstallers.push(fn) });
-  h.leafModule.isEmbeddedLeaf = () => true;
-  const leaf = Object.create(WorkspaceLeaf.prototype);
-  leaf.view = { canvas, file: second };
-  await leaf.openFile(first, { eState: { match: { content: 'card' } } });
-  assert.deepEqual(selected, [], 'the leaf already shows another file');
-  uninstallers.forEach((fn) => fn());
+  const original = function () { return Promise.resolve(); };
+  WorkspaceLeaf.prototype.openFile = original;
+  const uninstall = h.default.prototype.patchWorkspaceLeaf.call({ app: h.app });
+  assert.equal(WorkspaceLeaf.prototype.openFile, original);
+  uninstall();
 });

@@ -10,11 +10,6 @@ declare module "obsidian" {
         };
       };
     };
-    dragManager?: DragManager;
-  }
-
-  interface DragManager {
-    dragFile(event: DragEvent, file: TFile): unknown;
   }
 
   interface SearchResultItem {
@@ -36,8 +31,6 @@ declare module "obsidian" {
   }
 
   interface SearchView extends View {
-    onKeyArrowRightInFocus(e: KeyboardEvent): void;
-    onKeyArrowLeftInFocus(e: KeyboardEvent): void;
     onKeyArrowUpInFocus(e: KeyboardEvent): void;
     onKeyArrowDownInFocus(e: KeyboardEvent): void;
     onKeyEnterInFocus(e: KeyboardEvent): void;
@@ -55,12 +48,6 @@ declare module "obsidian" {
 
   interface WorkspaceLeaf {
     containerEl: HTMLDivElement;
-    activeTime: number;
-  }
-
-  interface Editor {
-    removeHighlights?(...args: unknown[]): void;
-    hasHighlight?(...args: unknown[]): boolean;
   }
 
   interface Workspace {

@@ -12,7 +12,7 @@ type ConstructableWorkspaceSplit = new (
   dir: "horizontal" | "vertical",
 ) => WorkspaceSplit;
 
-export function isEmbeddedLeaf(leaf: WorkspaceLeaf) {
+export function isEmbeddedLeaf(leaf: WorkspaceLeaf | undefined) {
   if (!leaf) return false;
   return leaf.containerEl.matches(".search-open-embed .workspace-leaf");
 }
@@ -27,24 +27,17 @@ function containerForDocument(doc: Document, plugin: SearchOpenPlugin) {
   return rootSplit;
 }
 
-/** Creates a real workspace leaf inside `targetEl`, outside the main layout. */
-export function spawnLeafView(
-  plugin: SearchOpenPlugin,
-  targetEl: HTMLElement,
-): [WorkspaceLeaf, EmbeddedView] {
-  const view = new EmbeddedView(targetEl, plugin);
-  return [view.attachLeaf(), view];
-}
-
 /**
- * A workspace split that lives in our own element. Obsidian needs the split's
- * root and container to resolve, so both point at the real workspace.
+ * A workspace split that lives in our own element, holding one real workspace
+ * leaf outside the main layout. Obsidian needs the split's root and container
+ * to resolve, so both point at the real workspace.
  */
 export class EmbeddedView extends Component {
   private readonly hoverEl: HTMLElement;
   private readonly containerEl: HTMLElement;
   private readonly rootSplit: WorkspaceSplit;
   private readonly document: Document;
+  readonly leaf: WorkspaceLeaf;
 
   constructor(
     targetEl: HTMLElement,
@@ -59,9 +52,10 @@ export class EmbeddedView extends Component {
     this.hoverEl = targetEl.createDiv({ cls: "search-open-embed" });
     this.containerEl = this.hoverEl.createDiv("search-open-embed-content");
     this.load();
+    this.leaf = this.attachLeaf();
   }
 
-  attachLeaf(): WorkspaceLeaf {
+  private attachLeaf(): WorkspaceLeaf {
     const { workspace } = this.plugin.app;
     this.rootSplit.getRoot = () =>
       this.document === window.document
