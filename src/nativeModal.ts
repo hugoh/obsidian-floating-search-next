@@ -388,6 +388,7 @@ export class SearchOpenModal extends Modal {
 
   /** Preview the file behind a result row, jumping to the match for match rows. */
   private previewItem(item: SearchResultItem) {
+    this.debouncedAutoPreview.cancel();
     const matchFile = item.parent?.file;
     const file = matchFile instanceof TFile ? matchFile : item.file;
     if (!(file instanceof TFile)) return;

@@ -8,11 +8,11 @@ Search your vault with Obsidian's own search in a floating modal, then open the 
 
 ## About this plugin
 
-Search & Open started as a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall (Quorafind) and is now best described as a derivative. It is a much smaller plugin with a narrower purpose, and it is not a drop-in replacement for Floating Search, nor meant to compete with it. About a third of the current source lines (31% by a rough count against Floating Search 4.3.0 and 4.4.1) are still verbatim from it, and the rest was removed, rewritten or added here.
+Search & Open started as a fork of [Floating Search](https://github.com/Quorafind/Obsidian-Float-Search) by Boninall (Quorafind) and is now best described as a derivative. It is a much smaller plugin with a narrower purpose, and it is not a drop-in replacement for Floating Search, nor meant to compete with it. About a third of the current source lines (31% by a rough count against Floating Search 4.3.0 and 4.4.1) are still verbatim from it, and the rest was removed, rewritten or added here. Seen from the other side, this plugin is 40% the size of Floating Search 4.3.0 (1,107 against 2,777 lines of code), and about 11% of Floating Search's lines are still here, mostly as scattered lines rather than whole blocks. [docs/history.md](docs/history.md#how-much-of-floating-search-is-used) has the details.
 
 What carries over is the idea and the architecture: the floating modal wrapping Obsidian's own search view, the embedded preview, most of the keyboard handling and the `obsidian://fs` link. Credit for those goes to the original author. The CI pipeline, the end-to-end tests and the match highlighting in the preview are new here, and so are the settings and the plugin's lifecycle handling.
 
-It also keeps pieces of two other forks of Floating Search: [Float Search Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) by AiurArtanis and [Obsidian Float Search](https://github.com/Peingxious/Obsidian-Float-Search) by Peingxious. See [Credits and licensing](#credits-and-licensing) for what came from where, and [docs/consolidation.md](docs/consolidation.md) for how the share was measured and its limits.
+It also keeps pieces of two other forks of Floating Search: [Float Search Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) by AiurArtanis and [Obsidian Float Search](https://github.com/Peingxious/Obsidian-Float-Search) by Peingxious. See [Credits and licensing](#credits-and-licensing) for what came from where, and [docs/history.md](docs/history.md) for how the shares were measured and their limits.
 
 ### What is different
 
@@ -54,6 +54,7 @@ BRAT also keeps the plugin up to date.
     - While a file is previewed, clicking another result switches the preview instead of closing the popup; Alt+click opens the file and closes the popup;
     - With no preview, clicking a result closes the popup and navigates to the file, as in Obsidian's own search.
 4. **`obsidian://fs?query=xxxxxx`** opens the popup with that query, so you can start a search from outside Obsidian.
+5. Clicking a link inside the preview replaces the previewed file.
 
 ## Settings
 
@@ -79,12 +80,12 @@ bun run test:e2e:container  # same, in a Linux container, with no window on your
 
 ## Credits and licensing
 
-Search & Open is a derivative work and is licensed under the **GNU General Public License v3.0** (see [LICENSE](LICENSE)). Floating Search and the forks it draws on are all GPL-3.0, so their code can be combined here. [docs/consolidation.md](docs/consolidation.md) records where each feature came from and every fix made while merging, including features that were later removed.
+Search & Open is a derivative work and is licensed under the **GNU General Public License v3.0** (see [LICENSE](LICENSE)). Floating Search and the forks it draws on are all GPL-3.0, so their code can be combined here. [docs/history.md](docs/history.md) records where each feature came from and every fix made while merging, including features that were later removed.
 
 | Source | What this plugin took from it | License |
 |---|---|---|
 | [Quorafind/Obsidian-Float-Search](https://github.com/Quorafind/Obsidian-Float-Search) (Boninall) and its contributors | The original plugin: the floating modal, the embedded search view and preview, the keyboard navigation and the `obsidian://fs` handler | GPL-3.0 |
-| [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | The composition (IME) guard, the typed localization and its Chinese translation, preview and file-opening lifecycle fixes, and the regression test harness | GPL-3.0 |
+| [AiurArtanis/Obsidian-Float-Search-Window](https://github.com/AiurArtanis/Obsidian-Float-Search-Window) | The composition (IME) guard, the typed message table, preview and file-opening lifecycle fixes, and the regression test harness | GPL-3.0 |
 | [Peingxious/Obsidian-Float-Search](https://github.com/Peingxious/Obsidian-Float-Search) | Applying the patches on first use (its crash guard for highlights in embedded previews was removed with the editable preview) | GPL-3.0 |
 | [nothingislost/obsidian-hover-editor](https://github.com/nothingislost/obsidian-hover-editor) | The embedded leaf implementation (`src/leafView.ts`) and the `getRoot` patch in `src/main.ts`, both reached through Floating Search | MIT |
 | [pjeby/monkey-around](https://github.com/pjeby/monkey-around) | Method patching (bundled dependency) | ISC |
