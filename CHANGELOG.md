@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/hugoh/obsidian-search-open/compare/0.2.0...0.3.0) (2026-11-28)
+
+
+### Features
+
+* read-only preview with lasting match marks, working Ctrl+N/P, and a leaner derivative of Floating Search ([#19](https://github.com/hugoh/obsidian-search-open/issues/19)) ([97579b9](https://github.com/hugoh/obsidian-search-open/commit/97579b9e6e474afc2d0d3dd9446a686c0ba58bb1))
+
+
+### Bug Fixes
+
+* keep a link followed in the preview from being replaced by the scheduled preview ([#21](https://github.com/hugoh/obsidian-search-open/issues/21)) ([ef20f98](https://github.com/hugoh/obsidian-search-open/commit/ef20f98e5cc79f019c78eadd1726406932e0e360))
+
 ## [0.2.0](https://github.com/hugoh/obsidian-search-open/compare/0.1.3...0.2.0) (2026-11-25)
 
 
